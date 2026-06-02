@@ -1,0 +1,73 @@
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. The Developer / Business Owner using your hub
+model User {
+  id            String   @id @default(uuid())
+  email         String   @unique
+  whopUserId    String   @unique // From Whop OAuth
+  accessToken   String   // Encrypted Whop OAuth token
+  refreshToken  String   // Used to refresh access
+  tokenExpires  DateTime
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relations
+  apps          WhopApp[]
+}
+
+// 2. The separate Whop Apps managed under one unified dashboard
+model WhopApp {
+  id           String   @id @default(uuid())
+  whopAppId    String   @unique // Native ID from Whop's App Store
+  appName      String
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Relations
+  customers    Customer[]
+  transactions Transaction[]
+  createdAt    DateTime @default(now())
+}
+
+// 3. For tracking Long-Term Cohort Analysis and Retention
+model Customer {
+  id             String   @id @default(uuid())
+  whopCustomerId String   @unique
+  email          String
+  appId          String
+  app            WhopApp  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  // Cohort Anchors
+  joinedCohortMonth DateTime // e.g., 2026-06-01 for grouping
+  status            String   // ACTIVE, CANCELLED, CHURNED
+  
+  // Relations
+  transactions   Transaction[]
+  createdAt      DateTime @default(now())
+}
+
+// 4. Multi-Currency Ledger for Taxes and Advanced Bookkeeping
+model Transaction {
+  id             String   @id @default(uuid())
+  whopInvoiceId  String   @unique
+  appId          String
+  app            WhopApp  @relation(fields: [appId], references: [id], onDelete: Cascade)
+  customerId     String
+  customer       Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  
+  // Financial Data
+  grossAmount    Decimal  // Explicit decimal to prevent floating-point calculation errors
+  netAmount      Decimal
+  taxAmount      Decimal  // Computed country-specific tax
+  currency       String   // USD, EUR, BTC, ETH
+  countryCode    String   // For localized tax/accounting exports (e.g., US, GB, DE)
+  
+  processedAt    DateTime // Date the payment occurred
+  createdAt      DateTime @default(now())
+}

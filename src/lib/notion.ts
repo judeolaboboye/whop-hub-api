@@ -10,7 +10,7 @@ export const notion = new Client({
 export const DATABASE_ID = process.env.NOTION_DATABASE_ID || '';
 
 /**
- * Standardizes how Spoke apps send data to the Hub so it maps cleanly to the CRM.
+ * Standardizes how Whop Mini Apps send data to the Hub so it maps cleanly to the CRM.
  */
 export interface HubSyncPayload {
     appSource: string; // The Whop App the user installed
