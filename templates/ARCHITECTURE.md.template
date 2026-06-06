@@ -1,0 +1,76 @@
+# Architecture Documentation - Whop Central Hub API
+
+This document details the data flows, state logic, and component hierarchy of the Central Hub API to preserve AI context across coding sessions.
+
+---
+
+## Directory Structure & Concerns
+
+```
+├── prisma/
+│   └── schema.prisma        # Database models (User, WhopApp, Customer, Transaction)
+├── src/
+│   ├── app/
+│   │   ├── actions/         # Server Actions (settings, leaderboard logic)
+│   │   ├── api/
+│   │   │   ├── auth/        # OAuth redirect and callback routes
+│   │   │   └── hub/         # Incoming sync endpoints (/notion-sync)
+│   │   ├── dashboard/       # Hub user interface
+│   │   ├── docs/            # Developer onboarding pages
+│   │   ├── page.tsx         # Product landing page
+│   │   └── layout.tsx       # Root layout
+│   └── lib/
+│       ├── analytics.tsx    # Bookkeeping & tax calculations
+│       ├── db.ts            # Prisma client instance
+│       └── encryption.ts    # AES-256-GCM encryption utilities
+```
+
+---
+
+## Key Core Data Flows
+
+### 1. Developer OAuth Flow
+1. Developer visits `/` and clicks **Connect Account**.
+2. Redirects to `/api/auth/whop` which starts the OAuth 2.1 PKCE authorization flow.
+3. Upon approval, Whop redirects to `/api/auth/callback/whop`.
+4. The callback handler exchanges the code for access/refresh tokens, encrypts the credentials, upserts the developer profile in the SQL database, sets a HTTP-only session cookie, and redirects to `/dashboard`.
+
+### 2. Multi-App Activity Synchronization
+```
+[Whop Mini App] -> (POST /api/hub/notion-sync) -> [Central Hub API] -> [Decrypted Notion CRM API]
+```
+1. A Whop Mini App triggers a server mutation/action emitting a user activation.
+2. It sends a `POST` request containing user headers (App ID, Email, Name, Tier, Niche).
+3. The Central Hub `/api/hub/notion-sync` receives the payload, looks up the app owner's user account, decrypts their private Notion API keys, and forwards the record to their isolated Notion database page.
+
+---
+
+## Environment Variables Configuration
+
+Developers should set these keys inside `.env.local`:
+
+```env
+# 1. Database Connection (PostgreSQL or CockroachDB compatible)
+DATABASE_URL="postgresql://user:password@host:port/dbname?sslmode=verify-full"
+
+# 2. Cryptography Secret (32-byte hex key for GCM encryption)
+ENCRYPTION_KEY="your-32-byte-hex-encryption-key"
+
+# 3. Whop Developer Dashboard Credentials
+NEXT_PUBLIC_WHOP_APP_ID="your-whop-app-id"
+WHOP_CLIENT_SECRET="your-whop-client-secret"
+NEXT_PUBLIC_WHOP_REDIRECT_URI="https://your-domain.com/api/auth/callback/whop"
+
+# 4. Feature Control (Disable public community features for single-tenant self-hosting)
+NEXT_PUBLIC_DISABLE_LEADERBOARD="true"
+```
+
+---
+
+## Database Models
+
+The schema maps four principal objects:
+- **User**: Represents the developer, carrying encrypted integration keys and retention preferences.
+- **WhopApp**: Stands for individual apps listed on the Whop store linked to the developer.
+- **Customer**: Connects a unique user to an app for long-term cohort analytics.
+- **Transaction**: Records transaction amounts, estimation tax liabilities, and billing regions.

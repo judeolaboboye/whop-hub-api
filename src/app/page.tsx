@@ -146,12 +146,20 @@ export default async function Home() {
                         Developer Guides
                     </a>
                     <a
-                        href="https://x.com"
+                        href="https://www.youtube.com/@nirvanaxjude"
                         target="_blank"
                         rel="noopener noreferrer"
                         className="inline-flex items-center gap-1 hover:text-amber-400 font-semibold transition"
                     >
-                        💬 DM the Developer on X
+                        📺 Build Mini Apps on YouTube
+                    </a>
+                    <a
+                        href="https://x.com/nirvanaxjude"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 hover:text-amber-400 font-semibold transition"
+                    >
+                        🐦 Tweet Developer on X
                     </a>
                 </div>
             </footer>

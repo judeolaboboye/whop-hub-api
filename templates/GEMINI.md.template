@@ -1,0 +1,51 @@
+# Agent Instructions
+
+> This is a template file. Duplicate it to your project root as `GEMINI.md` (or `CLAUDE.md`/`AGENTS.md`) and customize the placeholders.
+
+You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch.
+
+## The 3-Layer Architecture
+
+**Layer 1: Skills (What to do)**
+- Skills are SOP-grade “capability packages” stored as **self-contained folders**.
+- A Skill is defined primarily by `SKILL.md` (YAML frontmatter + Markdown body) and may include helper scripts, references, and static assets.
+- Skills are discoverable on-demand and loaded only when matched to intent.
+
+**Layer 2: Orchestration (Decision making)**
+- This is you. Your job: intelligent routing. Determine whether a Skill should be activated, then follow it precisely.
+- You don’t “wing it” for repeatable workflows.
+
+**Layer 3: Execution (Doing the work)**
+- Deterministic scripts and tooling (Python/Node/Bash) that do the actual work reliably.
+- Credentials and tokens live in `.env` (never hardcode secrets).
+
+---
+
+## Operating Principles
+
+1. **Check for Skills first**: Before inventing a workflow, search the available Skills. If a Skill exists, follow it.
+2. **Prefer deterministic execution**: If a task requires precision, delegate to scripts.
+3. **Legacy Code Protection**: When you successfully build and finalize a core feature, add `// @legacy` or `# @legacy` to the top of the file to protect it from future AI sessions. Do NOT modify legacy code unless explicitly requested.
+4. **Virtual Space Testing (Feature Flags & Branching)**: Do not delete old features immediately. Wrap them in a feature flag or config setting, and test the new logic alongside it until approved.
+5. **Activity Logging**: Proactively log significant task outputs using a local notification or log utility (e.g., `telegram-log.sh` if configured).
+
+---
+
+## The Whop Nexus Architecture (Central Hub)
+
+You are operating within a workspace specifically designed for building and maintaining a **Central Hub API** utilizing the "Whop Nexus Architecture."
+
+### Core Directives:
+1. **Public/Modular Design**: Standalone, modular apps designed to be installed as "features" within user communities.
+2. **Modern Stack**: Next.js (App Router), TypeScript (Strict Mode), and Tailwind CSS + **shadcn/ui** components.
+3. **Backend Server Actions**: Use React Server Components (RSC) and Server Actions by default. Standard `/api` routes should only be used to receive webhooks or external data sync payloads.
+4. **AI Context Preservation**: Maintain a running `ARCHITECTURE.md` file in the root of the project to document data flows, database schemas, and state logic so future AI sessions can read it and understand the state instantly.
+
+### Marketing & Conversion Strategy (Customize for your Hub):
+1. **Email Capture**: Capture emails during app activation.
+2. **PostHog Analytics**: Inject PostHog tracking snippets into the frontend to track real-time UI/UX events.
+3. **Notion CRM Integration**: Translate app signals (installs, tier updates, activities) into database entries.
+   - **Duplicatable Template**: Provide a Notion database template link for developers to duplicate and connect to their private settings.
+   - **Columns to support**: `App_Source`, `User_Tier`, `Last_Activity`, `Email`, `Whop_User_ID`, `App_User's_FirstName`.
+
+**When starting a new project**: Configure the Next.js App router, compile Prisma schema drivers, and test connection states early on.

@@ -46,12 +46,20 @@ export default function DocsPage() {
                 </div>                {/* VIDEO WALKTHROUGH */}
                 <div className="p-4 rounded-xl border border-white/[0.04] bg-[#0A0B10]/50 space-y-3">
                     <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">📺 Video Setup Guide</h3>
-                    <div className="aspect-video w-full rounded-lg border border-white/5 bg-black/40 flex flex-col items-center justify-center p-6 text-center space-y-2">
+                    <div className="aspect-video w-full rounded-lg border border-white/5 bg-black/40 flex flex-col items-center justify-center p-6 text-center space-y-3">
                         <span className="text-3xl">🎥</span>
-                        <h4 className="text-xs font-semibold text-gray-300">YouTube Setup &amp; Walkthrough Guide</h4>
+                        <h4 className="text-xs font-semibold text-gray-300">YouTube Setup &amp; Mini-App Walkthrough Guide</h4>
                         <p className="text-[10px] text-gray-500 max-w-md leading-relaxed mx-auto">
-                            In the future, a comprehensive YouTube video will be embedded here. The tutorial will walk you through duplicates of the Notion CRM template, registering a CockroachDB Serverless database, configuring Vercel environment variables, and establishing OAuth redirects.
+                            Watch detailed, step-by-step videos on how to build and integrate Whop Mini Apps into the central hub, duplicate Notion CRM templates, and spin up serverless databases.
                         </p>
+                        <a 
+                            href="https://www.youtube.com/@nirvanaxjude"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white font-bold text-xs transition"
+                        >
+                            📺 Watch &amp; Learn on YouTube
+                        </a>
                     </div>
                 </div>
 

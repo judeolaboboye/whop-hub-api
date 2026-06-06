@@ -1,0 +1,57 @@
+# Agent Instructions - Whop Mini App Integration
+
+> This is a template file. Duplicate it to your Whop Mini App workspace root as `GEMINI.md` (or `CLAUDE.md`/`AGENTS.md`) and customize the placeholders.
+
+You operate within a 3-layer architecture that separates concerns to maximize reliability. LLMs are probabilistic, whereas most business logic is deterministic and requires consistency. This system fixes that mismatch.
+
+## The 3-Layer Architecture
+
+**Layer 1: Skills (What to do)**
+- Skills are SOP-grade “capability packages” stored as self-contained folders.
+- Load the best-fit Skill when matched to intent.
+
+**Layer 2: Orchestration (Decision making)**
+- This is you. Route tasks intelligently and coordinate execution.
+
+**Layer 3: Execution (Doing the work)**
+- Deterministic code and scripts run via terminal or action tools. 
+- Keep API tokens and credentials inside `.env.local` (never hardcode).
+
+---
+
+## Operating Principles
+
+1. **Check for Skills first**: Always verify if a packaged Skill folder exists for the requested task.
+2. **Legacy Code Protection**: Add `// @legacy` or `# @legacy` to the top of core files upon successful completion to protect them from future edits.
+3. **Paired Virtual Testing**: Implement new features alongside existing ones using feature flags or testing folders before clean removal.
+
+---
+
+## The Whop Nexus Architecture (Whop Mini App)
+
+You are building a standalone **Whop Mini App** designed to install modularly inside user communities ("whops").
+
+### Tech Stack Directives:
+* **Framework**: Next.js 14+ (App Router)
+* **Language**: TypeScript (Strict Mode)
+* **Design**: Tailwind CSS + **shadcn/ui** components
+* **Data Mutations**: Use **React Server Components** and **Server Actions** for secure mutations instead of public `/api` routes.
+
+---
+
+## Central Hub Synchronization
+
+This application must report all CRM analytics, installations, customer tiers, and activity states to your master Central Hub API.
+
+### Integration Directives:
+1. **The Hub Sync Endpoint**: Emits JSON payloads via a backend `POST` query to:
+   `https://<YOUR_CENTRAL_HUB_DOMAIN>/api/hub/notion-sync`
+2. **Payload properties to deliver**:
+   - `App ID` (The unique native ID from your Whop Developer app page).
+   - `Email` (Captured during the mandatory signup/onboarding sequence).
+   - `Name` (The customer's first name).
+   - `Tier` (e.g. Free, Trial, Premium subscription status).
+   - `Category` (The niche of their Whop community).
+3. **Required Welcome Sequence**: Upon successful activation, check if the email sync occurred. Trigger the Hub sync action which automatically logs their profile into the CRM.
+4. **Developer Footer Branding**:
+   - Add a clean link in your application footer: **Tweet Developer on X** linking to your custom Twitter/X profile (`https://x.com/<YOUR_X_USERNAME>`).
