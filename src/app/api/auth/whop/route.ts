@@ -58,7 +58,7 @@ export async function GET() {
         });
 
         // Request broad developer scopes to manage app instances, payments, and subscriptions
-        const scopes = 'openid profile email payments memberships';
+        const scopes = 'openid profile email';
         const params = new URLSearchParams({
             response_type: 'code',
             client_id: clientId,
