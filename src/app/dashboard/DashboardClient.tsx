@@ -51,9 +51,10 @@ export default function DashboardClient({
     transactions,
 }: DashboardClientProps) {
     const [selectedAppId, setSelectedAppId] = useState<string>('all');
-    const [activeTab, setActiveTab] = useState<'overview' | 'cohorts' | 'ledger'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'cohorts' | 'ledger' | 'generator'>('overview');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCountry, setSelectedCountry] = useState('all');
+    const [copiedSnippet, setCopiedSnippet] = useState<boolean>(false);
 
     // 1. Filter data based on selected Whop App
     const filteredCustomers = useMemo(() => {
@@ -65,6 +66,50 @@ export default function DashboardClient({
         if (selectedAppId === 'all') return transactions;
         return transactions.filter(t => t.appId === selectedAppId);
     }, [transactions, selectedAppId]);
+
+    // 1.5 Revenue Share by App and Country Calculations
+    const revenueByApp = useMemo(() => {
+        const appMap: Record<string, { name: string; gross: number }> = {};
+        filteredTransactions.forEach(t => {
+            if (!appMap[t.appId]) {
+                appMap[t.appId] = { name: t.appName, gross: 0 };
+            }
+            appMap[t.appId].gross += t.grossAmount;
+        });
+        const totalGross = Object.values(appMap).reduce((sum, item) => sum + item.gross, 0);
+        return Object.entries(appMap)
+            .map(([id, item]) => ({
+                id,
+                name: item.name,
+                gross: parseFloat(item.gross.toFixed(2)),
+                percentage: totalGross > 0 ? Math.round((item.gross / totalGross) * 100) : 0,
+            }))
+            .sort((a, b) => b.gross - a.gross);
+    }, [filteredTransactions]);
+
+    const revenueByCountry = useMemo(() => {
+        const countryMap: Record<string, number> = {};
+        filteredTransactions.forEach(t => {
+            const country = t.countryCode.toUpperCase() || 'UNKNOWN';
+            countryMap[country] = (countryMap[country] || 0) + t.grossAmount;
+        });
+        const totalGross = Object.values(countryMap).reduce((sum, gross) => sum + gross, 0);
+        return Object.entries(countryMap)
+            .map(([country, gross]) => ({
+                country,
+                gross: parseFloat(gross.toFixed(2)),
+                percentage: totalGross > 0 ? Math.round((gross / totalGross) * 100) : 0,
+            }))
+            .sort((a, b) => b.gross - a.gross)
+            .slice(0, 5); // top 5
+    }, [filteredTransactions]);
+
+    const dynamicOrigin = useMemo(() => {
+        if (typeof window !== 'undefined') {
+            return window.location.origin;
+        }
+        return 'https://hub-api-taupe.vercel.app';
+    }, []);
 
     // 2. Overview Analytics Calculations
     const metrics = useMemo(() => {
@@ -200,10 +245,10 @@ export default function DashboardClient({
             <main className="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
                 
                 {/* TAB SELECTOR */}
-                <div className="flex border-b border-white/[0.04]">
+                <div className="flex border-b border-white/[0.04] overflow-x-auto scrollbar-none">
                     <button
                         onClick={() => setActiveTab('overview')}
-                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 transition ${
+                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
                             activeTab === 'overview' 
                                 ? 'border-amber-500 text-amber-400' 
                                 : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -213,7 +258,7 @@ export default function DashboardClient({
                     </button>
                     <button
                         onClick={() => setActiveTab('cohorts')}
-                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 transition ${
+                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
                             activeTab === 'cohorts' 
                                 ? 'border-amber-500 text-amber-400' 
                                 : 'border-transparent text-gray-500 hover:text-gray-300'
@@ -223,13 +268,23 @@ export default function DashboardClient({
                     </button>
                     <button
                         onClick={() => setActiveTab('ledger')}
-                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 transition ${
+                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
                             activeTab === 'ledger' 
                                 ? 'border-amber-500 text-amber-400' 
                                 : 'border-transparent text-gray-500 hover:text-gray-300'
                         }`}
                     >
                         🧾 Financial Ledger & Taxes
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('generator')}
+                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
+                            activeTab === 'generator' 
+                                ? 'border-amber-500 text-amber-400' 
+                                : 'border-transparent text-gray-500 hover:text-gray-300'
+                        }`}
+                    >
+                        🔌 Mini-App Code Generator
                     </button>
                 </div>
 
@@ -264,6 +319,53 @@ export default function DashboardClient({
                                 <span className="text-xs text-gray-500 uppercase tracking-wider">Churn Rate</span>
                                 <div className="text-2xl font-bold text-rose-400">{metrics.churnRate}%</div>
                                 <span className="text-[10px] text-gray-500">Cancelled / Total customers</span>
+                            </div>
+                        </div>
+
+                        {/* Visual Revenue Distributions */}
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                            {/* App Revenue Share */}
+                            <div className="p-6 rounded-xl bg-[#0A0B10]/60 border border-white/[0.04] space-y-4">
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Revenue Share by App</h3>
+                                {revenueByApp.length === 0 ? (
+                                    <div className="text-xs text-gray-500 py-6 text-center">No transaction history found.</div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {revenueByApp.map(app => (
+                                            <div key={app.id} className="space-y-1.5">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-gray-300 font-medium">📱 {app.name}</span>
+                                                    <span className="text-amber-400 font-semibold">${app.gross.toLocaleString()} ({app.percentage}%)</span>
+                                                </div>
+                                                <div className="w-full bg-white/[0.02] h-2 rounded-full overflow-hidden border border-white/5">
+                                                    <div className="bg-gradient-to-r from-amber-500 to-amber-600 h-full rounded-full transition-all duration-1000" style={{ width: `${app.percentage}%` }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Country Revenue Share */}
+                            <div className="p-6 rounded-xl bg-[#0A0B10]/60 border border-white/[0.04] space-y-4">
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Top Countries by Volume</h3>
+                                {revenueByCountry.length === 0 ? (
+                                    <div className="text-xs text-gray-500 py-6 text-center">No country transaction history.</div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {revenueByCountry.map(c => (
+                                            <div key={c.country} className="space-y-1.5">
+                                                <div className="flex justify-between text-xs">
+                                                    <span className="text-gray-300 font-medium">📍 {c.country}</span>
+                                                    <span className="text-emerald-400 font-semibold">${c.gross.toLocaleString()} ({c.percentage}%)</span>
+                                                </div>
+                                                <div className="w-full bg-white/[0.02] h-2 rounded-full overflow-hidden border border-white/5">
+                                                    <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full rounded-full transition-all duration-1000" style={{ width: `${c.percentage}%` }} />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
 
@@ -435,6 +537,145 @@ export default function DashboardClient({
                                 </table>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* TAB 4: MINI-APP CODE GENERATOR */}
+                {activeTab === 'generator' && (
+                    <div className="p-6 rounded-xl bg-[#0A0B10] border border-white/[0.04] space-y-6">
+                        <div className="space-y-1">
+                            <h3 className="text-lg font-bold">🔌 Mini-App Integration & Code Generator</h3>
+                            <p className="text-xs text-gray-500">
+                                Generate ready-to-use Next.js Server Actions and custom onboarding templates to sync your spoke apps with this central hub database.
+                            </p>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div className="space-y-4 lg:col-span-1 p-5 rounded-xl bg-white/[0.01] border border-white/[0.03]">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">1. Select Target App</h4>
+                                <p className="text-xs text-gray-400 leading-relaxed">
+                                    Choose which Whop App in your hub you want to connect to. The generated code will automatically carry the correct parameters.
+                                </p>
+                                <div className="space-y-2">
+                                    <label className="text-[11px] text-gray-500 uppercase font-semibold">Whop App</label>
+                                    <select
+                                        value={selectedAppId}
+                                        onChange={(e) => setSelectedAppId(e.target.value)}
+                                        className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value="all">🌐 Select an app to configure...</option>
+                                        {apps.map(app => (
+                                            <option key={app.id} value={app.id}>
+                                                📱 {app.appName}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div className="p-3.5 rounded-lg bg-[#12131A] border border-white/[0.03] space-y-2 text-xs">
+                                    <div className="font-semibold text-gray-300">Active Connection Endpoint</div>
+                                    <div className="font-mono text-[10px] text-amber-300 break-all select-all">
+                                        {dynamicOrigin}/api/hub/notion-sync
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="lg:col-span-2 space-y-4">
+                                <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-3">
+                                    <div className="flex justify-between items-center">
+                                        <h4 className="text-xs font-bold uppercase tracking-wider text-gray-400">2. Next.js Server Action Code</h4>
+                                        <button
+                                            onClick={() => {
+                                                const selectedAppName = selectedAppId === 'all' 
+                                                    ? 'Your App Name' 
+                                                    : apps.find(a => a.id === selectedAppId)?.appName || 'Your App Name';
+                                                
+                                                const codeString = `'use server';
+
+export async function syncAppUser({
+    email,
+    whopUserId,
+    name,
+    userTier = 'Trial'
+}: {
+    email: string;
+    whopUserId: string;
+    name: string;
+    userTier?: string;
+}) {
+    try {
+        const response = await fetch('${dynamicOrigin}/api/hub/notion-sync', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                email,
+                whopUserId,
+                name,
+                appSource: '${selectedAppName}',
+                userTier
+            }),
+        });
+
+        if (!response.ok) {
+            throw new Error(\`Failed to sync: \${response.statusText}\`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Failed syncing with Whop Central Hub:', error);
+        return { success: false, error: 'Hub synchronization failed' };
+    }
+}`;
+                                                navigator.clipboard.writeText(codeString);
+                                                setCopiedSnippet(true);
+                                                setTimeout(() => setCopiedSnippet(false), 2000);
+                                            }}
+                                            className="px-3 py-1.5 rounded bg-white/5 hover:bg-white/10 border border-white/5 text-[10px] font-semibold tracking-wide transition flex items-center gap-1.5 text-amber-400"
+                                        >
+                                            {copiedSnippet ? '✅ Copied!' : '📋 Copy Code'}
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="overflow-x-auto rounded-lg border border-white/5 bg-black/40">
+                                        <pre className="p-4 font-mono text-[10px] text-gray-300 leading-relaxed">
+{`'use server';
+
+export async function syncAppUser({
+    email,
+    whopUserId,
+    name,
+    userTier = 'Trial'
+}: {
+    email: string;
+    whopUserId: string;
+    name: string;
+    userTier?: string;
+}) {
+    try {
+        const response = await fetch('${dynamicOrigin}/api/hub/notion-sync', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                email,
+                whopUserId,
+                name,
+                appSource: '${selectedAppId === 'all' ? 'Your App Name' : apps.find(a => a.id === selectedAppId)?.appName || 'Your App Name'}',
+                userTier
+            }),
+        });
+
+        return await response.json();
+    } catch (error) {
+        console.error('Hub synchronization failed:', error);
+        return { success: false };
+    }
+}`}
+                                        </pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 )}
             </main>
