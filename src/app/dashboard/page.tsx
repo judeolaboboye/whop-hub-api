@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import DashboardClient from './DashboardClient';
 import { estimateTransactionFinance } from '@/lib/analytics';
 import { getLeaderboard } from '@/app/actions/leaderboard';
+import { redirect } from 'next/navigation';
 
 /**
  * Server Component for the Hub Command Center Dashboard
@@ -11,58 +12,9 @@ export default async function DashboardPage() {
     const cookieStore = await cookies();
     const userId = cookieStore.get('whop_session_user_id')?.value;
 
-    // 1. Auth Gate: If no session exists, render a premium onboarding page
+    // 1. Auth Gate: If no session exists, redirect to landing page
     if (!userId) {
-        return (
-            <div className="relative min-h-screen bg-[#090A0F] text-white flex flex-col items-center justify-center px-4 overflow-hidden font-sans">
-                {/* Visual Glow Gradients */}
-                <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-600/10 blur-[120px] pointer-events-none" />
-                <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none" />
-
-                <div className="relative max-w-2xl w-full text-center space-y-8 z-10">
-                    <div className="space-y-4">
-                        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1b1c26] border border-white/5 text-xs text-amber-400 font-medium tracking-wide">
-                            ✨ THE WHOP NEXUS ARCHITECTURE
-                        </div>
-                        <h1 className="text-4xl sm:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-[#E2E8F0] to-gray-500">
-                            Whop Developers Hub
-                        </h1>
-                        <p className="text-gray-400 text-sm sm:text-lg max-w-lg mx-auto leading-relaxed">
-                            A unified analytics command center. Access granular cohort analysis, automated country-specific tax reports, and cross-app metrics.
-                        </p>
-                    </div>
-
-                    {/* Feature Highlights Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-xl mx-auto text-left">
-                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                            <div className="text-amber-400 text-lg mb-1">📊</div>
-                            <h3 className="text-sm font-semibold mb-1">Cohort Retention</h3>
-                            <p className="text-xs text-gray-500">Track Month-over-Month subscriber retention cohorts.</p>
-                        </div>
-                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                            <div className="text-amber-400 text-lg mb-1">💸</div>
-                            <h3 className="text-sm font-semibold mb-1">Tax Accounting</h3>
-                            <p className="text-xs text-gray-500">Automated UK/EU VAT and US sales tax estimates.</p>
-                        </div>
-                        <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.04]">
-                            <div className="text-amber-400 text-lg mb-1">🔌</div>
-                            <h3 className="text-sm font-semibold mb-1">Multi-App Sync</h3>
-                            <p className="text-xs text-gray-500">Centralized ledger connecting all Whop Mini Apps.</p>
-                        </div>
-                    </div>
-
-                    <div>
-                        <a
-                            href="/api/auth/whop"
-                            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black font-semibold text-sm transition-all duration-300 transform hover:scale-[1.02] shadow-lg shadow-amber-500/10 active:scale-[0.98]"
-                        >
-                            Connect with Whop Account
-                        </a>
-                        <p className="text-xs text-gray-500 mt-3">Secure OAuth 2.1 PKCE authorization</p>
-                    </div>
-                </div>
-            </div>
-        );
+        redirect('/');
     }
 
     // 2. Fetch User & Associated Models from PostgreSQL

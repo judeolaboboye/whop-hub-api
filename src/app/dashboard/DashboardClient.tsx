@@ -380,10 +380,17 @@ export default function DashboardClient({
 
                     <a 
                         href="/api/auth/whop" 
-                        className="px-3.5 py-2 rounded-lg border border-white/5 bg-[#14151f] text-xs font-semibold hover:bg-[#1a1c29] transition"
+                        className="px-3.5 py-2 rounded-lg border border-white/5 bg-[#14151f] text-xs font-semibold hover:bg-[#1a1c29] transition hover:border-white/10"
                         title="Reconnect / Switch Account"
                     >
                         🔄 Switch Account
+                    </a>
+                    <a 
+                        href="/api/auth/logout" 
+                        className="px-3.5 py-2 rounded-lg border border-white/5 bg-red-950/20 text-red-400 text-xs font-semibold hover:bg-red-900/30 hover:border-red-500/30 transition active:scale-[0.98]"
+                        title="Log Out Session"
+                    >
+                        🚪 Log Out
                     </a>
                 </div>
             </header>
@@ -1051,6 +1058,21 @@ export async function syncAppUser({
                                 <p className="text-xs text-gray-500 leading-relaxed">
                                     Provide your personal Notion credentials. When your Whop Mini Apps send activations, they will sync to **your** database, fully isolated. Keys are encrypted with military-grade AES-256-GCM. Leaving this blank disables Notion CRM sync.
                                 </p>
+                                
+                                <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10 text-xs text-amber-400 leading-relaxed space-y-1">
+                                    <p className="font-semibold">💡 Notion CRM Database Setup:</p>
+                                    <p className="text-gray-400 text-[11px]">
+                                        To sync data correctly, duplicate our official template with all configured column headers: 
+                                        <a 
+                                            href="https://www.notion.so/judeolaboboye/31a7e430a0a680dabd67ceea8d3caf27?v=31a7e430a0a680f6b3ea000c95904cbe&source=copy_link" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="text-amber-400 underline ml-1 font-bold hover:text-amber-300 transition"
+                                        >
+                                            Duplicate Notion Database Template →
+                                        </a>
+                                    </p>
+                                </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <div className="space-y-1">
                                         <label className="text-[10px] text-gray-400 font-semibold uppercase">Notion API Key</label>

@@ -43,6 +43,16 @@ export default function DocsPage() {
                     <p className="text-gray-400 text-sm sm:text-base max-w-2xl leading-relaxed">
                         Welcome to the Whop Central Hub developer manuals. Below you will find step-by-step instructions to hook your Whop Mini Apps into the live shared hub, or set up your own self-hosted private command center.
                       </p>
+                </div>                {/* VIDEO WALKTHROUGH */}
+                <div className="p-4 rounded-xl border border-white/[0.04] bg-[#0A0B10]/50 space-y-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-amber-500">📺 Video Setup Guide</h3>
+                    <div className="aspect-video w-full rounded-lg border border-white/5 bg-black/40 flex flex-col items-center justify-center p-6 text-center space-y-2">
+                        <span className="text-3xl">🎥</span>
+                        <h4 className="text-xs font-semibold text-gray-300">YouTube Setup &amp; Walkthrough Guide</h4>
+                        <p className="text-[10px] text-gray-500 max-w-md leading-relaxed mx-auto">
+                            In the future, a comprehensive YouTube video will be embedded here. The tutorial will walk you through duplicates of the Notion CRM template, registering a CockroachDB Serverless database, configuring Vercel environment variables, and establishing OAuth redirects.
+                        </p>
+                    </div>
                 </div>
 
                 {/* THE CORE FEATURES */}
@@ -99,11 +109,87 @@ export default function DocsPage() {
 
                         <div className="flex gap-4">
                             <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-xs shrink-0 text-amber-400">2</div>
-                            <div className="space-y-1.5">
+                            <div className="space-y-3.5 w-full">
                                 <h4 className="text-sm font-semibold text-gray-200">Configure your personal Notion database</h4>
                                 <p className="text-xs text-gray-400 leading-relaxed">
                                     Navigate to the **Settings & CRM** tab. Input your **Notion API Key** and **Notion Database ID**. This creates your own isolated workspace in the CRM—no data is shared or visible to others.
                                 </p>
+
+                                <div className="p-3.5 bg-amber-500/5 border border-amber-500/10 rounded-lg text-xs space-y-2">
+                                    <span className="font-semibold text-amber-400 block">📋 How to Duplicate &amp; Configure the Template:</span>
+                                    <ol className="list-decimal pl-5 text-[11px] text-gray-300 space-y-1.5">
+                                        <li>
+                                            Open our official <a href="https://www.notion.so/judeolaboboye/31a7e430a0a680dabd67ceea8d3caf27?v=31a7e430a0a680f6b3ea000c95904cbe&amp;source=copy_link" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold hover:text-amber-300">Notion CRM Database Template</a>.
+                                        </li>
+                                        <li>
+                                            Click the <strong>Duplicate</strong> button in the top right corner of the page to copy it to your own Notion workspace.
+                                        </li>
+                                        <li>
+                                            Go to the <a href="https://www.notion.so/my-integrations" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold hover:text-amber-300">Notion Integrations Dashboard</a> and click <strong>Create new integration</strong>. Choose the workspace containing your duplicated database.
+                                        </li>
+                                        <li>
+                                            Go to your duplicated database page settings in Notion, click <strong>Connect to</strong> and select your newly created integration to grant it API permissions.
+                                        </li>
+                                        <li>
+                                            Copy the <strong>Internal Integration Token</strong> (this is your Notion API Key) and the <strong>Database ID</strong> (found in the URL of your database, e.g., <code>https://www.notion.so/WORKSPACE/DATABASE_ID?v=...</code>).
+                                        </li>
+                                        <li>
+                                            Paste these details in the **Settings** tab of your dashboard.
+                                        </li>
+                                    </ol>
+                                </div>
+                                
+                                {/* Mapped Columns table */}
+                                <div className="mt-4 p-4 rounded-lg bg-black/30 border border-white/5 space-y-2.5">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 block">Notion Database Column Configuration</span>
+                                    <p className="text-[10px] text-gray-500 leading-relaxed">
+                                        The duplicated template already contains the exact column structure. If creating manually, ensure these exact column headers and property types match:
+                                    </p>
+                                    <div className="overflow-x-auto rounded border border-white/[0.04]">
+                                        <table className="w-full border-collapse text-[10px] text-left text-gray-400 min-w-[350px]">
+                                            <thead>
+                                                <tr className="bg-white/[0.02] text-gray-300 font-bold border-b border-white/[0.04]">
+                                                    <th className="p-2 border-r border-white/[0.04]">Column Name</th>
+                                                    <th className="p-2">Notion Type</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-white/[0.02]">
+                                                <tr>
+                                                    <td className="p-2 border-r border-white/[0.04] font-mono text-amber-400">App_Source</td>
+                                                    <td className="p-2">Title (Default First Column)</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="p-2 border-r border-white/[0.04] font-mono text-amber-400">App_User's_FirstName</td>
+                                                    <td className="p-2">Text</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="p-2 border-r border-white/[0.04] font-mono text-amber-400">User_Tier</td>
+                                                    <td className="p-2">Select (e.g. Trial, Paid, Commission-based)</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="p-2 border-r border-white/[0.04] font-mono text-amber-400">Email</td>
+                                                    <td className="p-2">Email</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="p-2 border-r border-white/[0.04] font-mono text-amber-400">Whop_User_ID </td>
+                                                    <td className="p-2">Text *(Note the trailing space)*</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="p-2 border-r border-white/[0.04] font-mono text-amber-400">Niche/Category</td>
+                                                    <td className="p-2">Text</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="p-2 border-r border-white/[0.04] font-mono text-amber-400">User's_App_Usage&amp;Log</td>
+                                                    <td className="p-2">URL</td>
+                                                </tr>
+                                                <tr>
+                                                    <td className="p-2 border-r border-white/[0.04] font-mono text-amber-400">Last_Activity</td>
+                                                    <td className="p-2">Date</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
@@ -135,14 +221,74 @@ export default function DocsPage() {
                     <div className="space-y-4">
                         <div className="flex gap-4">
                             <div className="w-6 h-6 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-bold text-xs shrink-0 text-amber-400">1</div>
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 w-full">
                                 <h4 className="text-sm font-semibold text-gray-200">Provision database storage on CockroachDB Serverless</h4>
                                 <p className="text-xs text-gray-400 leading-relaxed font-sans">
                                     We highly recommend using **CockroachDB Serverless** instead of standard Neon/Supabase free tiers. 
                                     * **Neon/Supabase Free**: Restricted to 500MB of storage.
                                     * **CockroachDB Free**: Offers **10 GB** of storage for free (20x larger!). This allows you to scale to tens of millions of database rows without upgrading.
-                                    Create a free cluster, select PostgreSQL-compatible mode, and copy the database connection string.
                                 </p>
+
+                                <div className="p-3.5 bg-white/[0.01] border border-white/5 rounded-lg text-xs space-y-2">
+                                    <span className="font-semibold text-amber-400 block">🛠️ Step-by-Step CockroachDB Provisioning:</span>
+                                    <ol className="list-decimal pl-5 text-[11px] text-gray-400 space-y-1.5">
+                                        <li>
+                                            Go to <a href="https://cockroachlabs.cloud" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold hover:text-amber-300">Cockroach Labs Console</a> and sign up for a free account.
+                                        </li>
+                                        <li>
+                                            Click <strong>Create Cluster</strong>. Select <strong>Serverless</strong> (Free Tier).
+                                        </li>
+                                        <li>
+                                            Select your cloud provider (e.g. AWS or GCP) and a region closest to your Vercel deployment.
+                                        </li>
+                                        <li>
+                                            Click <strong>Create Cluster</strong>. Wait a few seconds for the cluster to initialize.
+                                        </li>
+                                        <li>
+                                            Create a database SQL user (e.g., <code>nexus_admin</code>) and generate a secure password.
+                                        </li>
+                                        <li>
+                                            Select <strong>Prisma</strong> or <strong>General connection string</strong> under the Connection window. Copy the database URL. It will look like this:
+                                            <code className="block mt-1 p-2 bg-black/40 rounded border border-white/5 text-[10px] text-amber-300 font-mono break-all">
+                                                postgresql://nexus_admin:YOUR_PASSWORD@YOUR_HOST:26257/defaultdb?sslmode=verify-full
+                                            </code>
+                                        </li>
+                                        <li>
+                                            Add this connection string as the <code>DATABASE_URL</code> environment variable in your Vercel project or local <code>.env.local</code>.
+                                        </li>
+                                    </ol>
+                                </div>
+
+                                {/* Storage Math and Capacity calculations */}
+                                <div className="mt-3 p-4 rounded-lg bg-black/30 border border-white/5 space-y-3">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-500 block">📊 Shared Storage Math &amp; Scaling Limits</span>
+                                    <div className="text-[10px] text-gray-400 leading-relaxed space-y-2.5">
+                                        <p>
+                                            Because user, app, and transaction tables store text and numbers, a single transaction record combined with customer data and indexes takes approximately **1.5 KB** of database space.
+                                        </p>
+                                        <p className="font-semibold text-gray-300">
+                                            10 GB of Storage = 10,000,000 Kilobytes (approx. 6.6 Million customer transaction logs).
+                                        </p>
+                                        
+                                        <div className="border-t border-white/5 pt-2">
+                                            <p className="font-semibold text-amber-400 mb-1">Scaling Scenario: 10-20 Apps per Member with High Volume</p>
+                                            <ul className="list-disc pl-4 space-y-1">
+                                                <li>Suppose you host this live as a shared service for **100 active members (developers)**.</li>
+                                                <li>Each developer hosts **15 Whop apps** (1,500 apps total).</li>
+                                                <li>Each app processes **1,000 monthly transactions/activations** (totaling 1.5 Million transactions/month across the platform).</li>
+                                                <li>This high-volume traffic generates: <code>1.5M * 1.5 KB</code> = **2.25 GB** of storage space per month.</li>
+                                                <li>Without pruning, the 10 GB free tier would fill up in **4.4 months**.</li>
+                                            </ul>
+                                        </div>
+
+                                        <div className="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
+                                            <p className="font-bold">🛡️ How Auto-Pruning Saves the Free Tier:</p>
+                                            <p className="text-[9px] mt-0.5 leading-relaxed">
+                                                With the built-in **Auto-Pruning retention setting** configured to **3 Months**, old logs are deleted automatically on login. The database size caps at <code>3 * 2.25 GB = 6.75 GB</code> (well under the 10 GB limit), allowing the system to run on the **free tier indefinitely** without ever running out of space!
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
