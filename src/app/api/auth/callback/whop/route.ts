@@ -99,20 +99,24 @@ export async function GET(req: NextRequest) {
         const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
         // 4. Save user profile & encrypted keys into PostgreSQL database
+        const isAdmin = userInfo.email === 'judeolaboboye@gmail.com' || (process.env.ADMIN_EMAIL && userInfo.email === process.env.ADMIN_EMAIL);
+
         const user = await db.user.upsert({
             where: { whopUserId: userInfo.sub },
             update: {
                 email: userInfo.email,
                 accessToken: encryptedAccessToken,
                 refreshToken: encryptedRefreshToken,
-                tokenExpires: expiresAt
+                tokenExpires: expiresAt,
+                ...(isAdmin ? { tier: 'PREMIUM' } : {})
             },
             create: {
                 email: userInfo.email,
                 whopUserId: userInfo.sub,
                 accessToken: encryptedAccessToken,
                 refreshToken: encryptedRefreshToken,
-                tokenExpires: expiresAt
+                tokenExpires: expiresAt,
+                tier: isAdmin ? 'PREMIUM' : 'FREE'
             }
         });
 

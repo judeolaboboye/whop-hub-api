@@ -471,18 +471,7 @@ export default function DashboardClient({
                     >
                         🔌 Mini-App Code Generator
                     </button>
-                    {!disableLeaderboard && (
-                        <button
-                            onClick={() => setActiveTab('leaderboard')}
-                            className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
-                                activeTab === 'leaderboard' 
-                                    ? 'border-amber-500 text-amber-400' 
-                                    : 'border-transparent text-gray-500 hover:text-gray-300'
-                            }`}
-                        >
-                            🏆 Community Leaderboard
-                        </button>
-                    )}
+
                     <button
                         onClick={() => setActiveTab('crm')}
                         className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
@@ -997,92 +986,7 @@ export async function syncAppUser({
                     </div>
                 )}
 
-                {/* TAB 5: PUBLIC COMMUNITY LEADERBOARD */}
-                {activeTab === 'leaderboard' && !disableLeaderboard && (
-                    <div className="p-6 rounded-xl bg-[#0A0B10] border border-white/[0.04] space-y-6">
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div>
-                                <h3 className="text-lg font-bold">🏆 Public Community Leaderboard</h3>
-                                <p className="text-xs text-gray-500">
-                                    Top earning applications in the Whop Hub ecosystem. Configure your visibility under Settings.
-                                </p>
-                            </div>
-                            <div className="flex rounded-lg bg-[#14151F] border border-white/5 p-1 text-xs">
-                                <button
-                                    onClick={() => setLeaderboardPeriod('monthly')}
-                                    className={`px-4 py-1.5 rounded-md font-semibold transition ${
-                                        leaderboardPeriod === 'monthly' 
-                                            ? 'bg-amber-500 text-black' 
-                                            : 'text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    This Month
-                                </button>
-                                <button
-                                    onClick={() => setLeaderboardPeriod('yearly')}
-                                    className={`px-4 py-1.5 rounded-md font-semibold transition ${
-                                        leaderboardPeriod === 'yearly' 
-                                            ? 'bg-amber-500 text-black' 
-                                            : 'text-gray-400 hover:text-white'
-                                    }`}
-                                >
-                                    This Year
-                                </button>
-                            </div>
-                        </div>
 
-                        {sortedLeaderboard.length === 0 ? (
-                            <div className="text-center py-12 text-gray-500 text-sm">
-                                No developers have opted into the leaderboard yet. Be the first under the Settings tab!
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto rounded-lg border border-white/[0.03]">
-                                <table className="w-full border-collapse text-left text-xs min-w-[600px]">
-                                    <thead>
-                                        <tr className="bg-[#12131A] text-gray-400 font-semibold uppercase tracking-wider border-b border-white/[0.03]">
-                                            <th className="p-4 w-16 text-center">Rank</th>
-                                            <th className="p-4">Developer Alias</th>
-                                            <th className="p-4 w-28 text-center">Apps Managed</th>
-                                            <th className="p-4 text-right">Monthly Income</th>
-                                            <th className="p-4 text-right">Yearly Income</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/[0.02] text-gray-300">
-                                        {sortedLeaderboard.map((item, idx) => {
-                                            const rankColors = ['text-amber-400 font-bold', 'text-gray-300 font-bold', 'text-amber-600 font-bold'];
-                                            const rankBadges = ['🥇', '🥈', '🥉'];
-                                            const isTop3 = idx < 3;
-
-                                            return (
-                                                <tr key={idx} className="hover:bg-white/[0.01]">
-                                                    <td className="p-4 text-center font-mono font-semibold">
-                                                        {isTop3 ? (
-                                                            <span className="text-lg" title={`Rank ${idx + 1}`}>{rankBadges[idx]}</span>
-                                                        ) : (
-                                                            <span>#{idx + 1}</span>
-                                                        )}
-                                                    </td>
-                                                    <td className={`p-4 ${isTop3 ? rankColors[idx] : 'text-white'}`}>
-                                                        {item.name}
-                                                    </td>
-                                                    <td className="p-4 text-center text-gray-400 font-semibold">
-                                                        {item.appCount}
-                                                    </td>
-                                                    <td className="p-4 text-right text-emerald-400 font-semibold">
-                                                        ${item.monthlyEarnings.toLocaleString()}
-                                                    </td>
-                                                    <td className="p-4 text-right text-amber-500 font-semibold">
-                                                        ${item.yearlyEarnings.toLocaleString()}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                )}
 
                 {/* TAB 5.5: CRM & AUTOMATIONS */}
                 {activeTab === 'crm' && (
