@@ -18,14 +18,45 @@ export interface SendEmailPayload {
     to: string;
     subject: string;
     html: string; // The HTML body of the email
+    resendApiKey?: string | null;
 }
 
 /**
- * Sends an email using the configured Gmail transporter.
+ * Sends an email using the developer's Resend API Key if available, or falls back to Gmail SMTP.
  */
-export async function sendEmail({ to, subject, html }: SendEmailPayload) {
+export async function sendEmail({ to, subject, html, resendApiKey }: SendEmailPayload) {
+    if (resendApiKey && resendApiKey.trim() !== '') {
+        try {
+            console.log(`[Email] Sending via Resend API to ${to}...`);
+            const response = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${resendApiKey.trim()}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    from: 'onboarding@resend.dev',
+                    to,
+                    subject,
+                    html,
+                }),
+            });
+
+            if (!response.ok) {
+                const errData = await response.text();
+                throw new Error(`Resend API failed: ${response.statusText} - ${errData}`);
+            }
+
+            const data = await response.json();
+            console.log(`[Email Sent] Resend ID: ${data.id}`);
+            return { success: true, messageId: data.id };
+        } catch (error) {
+            console.error('[Email Error] Resend API failed, trying Gmail fallback if configured...', error);
+        }
+    }
+
     if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-        throw new Error('Gmail credentials are missing in your environment variables.');
+        throw new Error('No valid Resend API Key or Gmail fallback credentials configured.');
     }
 
     try {
@@ -36,10 +67,10 @@ export async function sendEmail({ to, subject, html }: SendEmailPayload) {
             html,
         });
 
-        console.log(`[Email Sent] Message ID: ${info.messageId}`);
+        console.log(`[Email Sent] Gmail Message ID: ${info.messageId}`);
         return { success: true, messageId: info.messageId };
     } catch (error) {
-        console.error('[Email Error] Failed to send email:', error);
+        console.error('[Email Error] Gmail fallback failed:', error);
         throw error;
     }
 }

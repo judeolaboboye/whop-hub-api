@@ -28,6 +28,18 @@ model User {
   // Database Pruning & Data Retention (Months, 0 = Keep forever)
   retentionMonths    Int      @default(0)
 
+  // Billing & Storage Allocation
+  tier               String   @default("FREE") // "FREE" or "PREMIUM"
+
+  // Resend Email Automations (Encrypted)
+  resendApiKey        String?
+  autoWelcomeEmail    Boolean  @default(false)
+  autoCancelEmail     Boolean  @default(false)
+  welcomeEmailSubject String?  @default("Welcome to the community!")
+  welcomeEmailBody    String?  
+  cancelEmailSubject  String?  @default("Checking in...")
+  cancelEmailBody     String?  
+
   // Relations
   apps               WhopApp[]
 }
@@ -54,10 +66,16 @@ model Customer {
   appId          String
   app            WhopApp  @relation(fields: [appId], references: [id], onDelete: Cascade)
   
+  // Rich User Detail Fields from Whop Payload
+  name               String?
+  username           String?
+  bio                String?
+  profilePictureUrl  String?
+
   // Cohort Anchors
   joinedCohortMonth DateTime // e.g., 2026-06-01 for grouping
-  status            String   // ACTIVE, CANCELLED, CHURNED
-  
+  status            String   // ACTIVE, CANCELLED
+
   // Relations
   transactions   Transaction[]
   createdAt      DateTime @default(now())
@@ -81,4 +99,14 @@ model Transaction {
   
   processedAt    DateTime // Date the payment occurred
   createdAt      DateTime @default(now())
+}
+
+// 5. Shared Community Leaderboard (Centralized Standings)
+model SharedLeaderboardEntry {
+  id             String   @id @default(uuid())
+  whopUserId     String   @unique // One entry per developer
+  developerName  String
+  monthlyGross   Decimal
+  yearlyGross    Decimal
+  updatedAt      DateTime @updatedAt
 }

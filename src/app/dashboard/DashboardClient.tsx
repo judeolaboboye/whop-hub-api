@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { calculateCohorts, generateBookkeepingCSV } from '@/lib/analytics';
-import { updateUserSettings } from '@/app/actions/settings';
+import { updateUserSettings, resetDeveloperDatabase, upgradeUserTier } from '@/app/actions/settings';
 
 interface AppProp {
     id: string;
@@ -19,6 +19,10 @@ interface CustomerProp {
     appId: string;
     joinedCohortMonth: string;
     status: string;
+    name?: string | null;
+    username?: string | null;
+    bio?: string | null;
+    profilePictureUrl?: string | null;
 }
 
 interface TransactionProp {
@@ -41,6 +45,14 @@ interface UserSettingsProp {
     leaderboardOptIn: boolean;
     leaderboardName: string;
     retentionMonths: number;
+    tier: string;
+    resendApiKey: string;
+    autoWelcomeEmail: boolean;
+    autoCancelEmail: boolean;
+    welcomeEmailSubject: string;
+    welcomeEmailBody: string;
+    cancelEmailSubject: string;
+    cancelEmailBody: string;
 }
 
 interface LeaderboardEntryProp {
@@ -72,10 +84,21 @@ export default function DashboardClient({
 }: DashboardClientProps) {
     const disableLeaderboard = process.env.NEXT_PUBLIC_DISABLE_LEADERBOARD === 'true';
     const [selectedAppId, setSelectedAppId] = useState<string>('all');
-    const [activeTab, setActiveTab] = useState<'overview' | 'cohorts' | 'ledger' | 'generator' | 'leaderboard' | 'settings'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'cohorts' | 'ledger' | 'generator' | 'leaderboard' | 'settings' | 'crm'>('overview');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCountry, setSelectedCountry] = useState('all');
     const [copiedSnippet, setCopiedSnippet] = useState<boolean>(false);
+
+    // CRM and Email Automation States
+    const [crmSearchQuery, setCrmSearchQuery] = useState('');
+    const [resendApiKey, setResendApiKey] = useState(settings.resendApiKey || '');
+    const [autoWelcomeEmail, setAutoWelcomeEmail] = useState(settings.autoWelcomeEmail);
+    const [autoCancelEmail, setAutoCancelEmail] = useState(settings.autoCancelEmail);
+    const [welcomeEmailSubject, setWelcomeEmailSubject] = useState(settings.welcomeEmailSubject || 'Welcome to the community!');
+    const [welcomeEmailBody, setWelcomeEmailBody] = useState(settings.welcomeEmailBody || '');
+    const [cancelEmailSubject, setCancelEmailSubject] = useState(settings.cancelEmailSubject || 'Checking in...');
+    const [cancelEmailBody, setCancelEmailBody] = useState(settings.cancelEmailBody || '');
+    const [userTier, setUserTier] = useState(settings.tier || 'FREE');
 
     // Settings Form States
     const [notionApiKey, setNotionApiKey] = useState(settings.notionApiKey || '');
@@ -314,7 +337,14 @@ export default function DashboardClient({
             notionDatabaseId,
             leaderboardOptIn,
             leaderboardName,
-            retentionMonths
+            retentionMonths,
+            resendApiKey,
+            autoWelcomeEmail,
+            autoCancelEmail,
+            welcomeEmailSubject,
+            welcomeEmailBody,
+            cancelEmailSubject,
+            cancelEmailBody
         });
 
         if (res.success) {
@@ -454,6 +484,16 @@ export default function DashboardClient({
                         </button>
                     )}
                     <button
+                        onClick={() => setActiveTab('crm')}
+                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
+                            activeTab === 'crm' 
+                                ? 'border-amber-500 text-amber-400' 
+                                : 'border-transparent text-gray-500 hover:text-gray-300'
+                        }`}
+                    >
+                        👥 CRM & Automations
+                    </button>
+                    <button
                         onClick={() => setActiveTab('settings')}
                         className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
                             activeTab === 'settings' 
@@ -461,7 +501,7 @@ export default function DashboardClient({
                                 : 'border-transparent text-gray-500 hover:text-gray-300'
                         }`}
                     >
-                        ⚙️ Settings & CRM
+                        ⚙️ Settings
                     </button>
                 </div>
 
@@ -1041,6 +1081,389 @@ export async function syncAppUser({
                                 </table>
                             </div>
                         )}
+                    </div>
+                )}
+
+                {/* TAB 5.5: CRM & AUTOMATIONS */}
+                {activeTab === 'crm' && (
+                    <div className="space-y-6">
+                        {/* 1. Storage & Tier Overview Card */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="md:col-span-2 p-6 rounded-xl bg-[#0A0B10] border border-white/[0.04] flex flex-col justify-between space-y-4">
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-base font-bold flex items-center gap-2">
+                                            🗄️ Database Usage & Tier Limits
+                                        </h3>
+                                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider ${
+                                            userTier === 'PREMIUM'
+                                                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                                : 'bg-white/5 text-gray-400 border border-white/10'
+                                        }`}>
+                                            {userTier} PLAN
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-gray-400 leading-relaxed">
+                                        Each connected customer and transaction requires database space. 
+                                        {userTier === 'FREE' 
+                                            ? ' Free plan accounts are limited to 100 MB of database space (approx. 66,000 logs) and 3 months of historical data.' 
+                                            : ' Premium plan accounts support up to 5 GB of database space and lifetime logs retention.'}
+                                    </p>
+                                </div>
+
+                                {/* Progress Bar */}
+                                <div className="space-y-2">
+                                    <div className="flex justify-between text-xs font-semibold">
+                                        <span className="text-gray-400">
+                                            Estimated Space: {((customers.length + transactions.length) * 1.5 / 1024).toFixed(2)} MB / {userTier === 'FREE' ? '100' : '5120'} MB
+                                        </span>
+                                        <span className="text-amber-400">
+                                            {(((customers.length + transactions.length) * 1500) / (userTier === 'FREE' ? 100 * 1024 * 1024 : 5 * 1024 * 1024 * 1024) * 100).toFixed(3)}% Used
+                                        </span>
+                                    </div>
+                                    <div className="w-full bg-[#12131C] h-2.5 rounded-full overflow-hidden border border-white/[0.03]">
+                                        <div 
+                                            className="bg-gradient-to-r from-amber-500 to-amber-600 h-full rounded-full transition-all duration-500"
+                                            style={{ width: `${Math.min(100, (((customers.length + transactions.length) * 1500) / (userTier === 'FREE' ? 100 * 1024 * 1024 : 5 * 1024 * 1024 * 1024) * 100))}%` }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Upgrade / Promotion Card */}
+                            <div className="p-6 rounded-xl bg-gradient-to-br from-amber-950/20 to-black border border-amber-500/10 flex flex-col justify-between space-y-4">
+                                <div className="space-y-1.5">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">👑 App Growth Accelerator</h4>
+                                    <p className="text-xs text-gray-300 leading-relaxed">
+                                        Unlock automated onboarding campaigns, cancellation surveys, lifetime history, and 5 GB database storage.
+                                    </p>
+                                </div>
+
+                                {userTier === 'FREE' ? (
+                                    <button
+                                        onClick={async () => {
+                                            const res = await upgradeUserTier();
+                                            if (res.success) {
+                                                setUserTier('PREMIUM');
+                                                alert('🎉 Congratulations! You upgraded to PREMIUM plan. Automated emails are now unlocked.');
+                                            } else {
+                                                alert(`Upgrade failed: ${res.error}`);
+                                            }
+                                        }}
+                                        className="w-full py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-black font-bold text-xs transition duration-300 hover:from-amber-400 hover:to-amber-500 hover:shadow-lg hover:shadow-amber-500/10"
+                                    >
+                                        Upgrade to Premium ($10/mo)
+                                    </button>
+                                ) : (
+                                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-center text-xs text-amber-400 font-bold">
+                                        ✨ Premium Plan Active
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 2. Resend Setup & Automation Rules */}
+                        <div className="p-6 rounded-xl bg-[#0A0B10] border border-white/[0.04] space-y-6">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/[0.04] pb-4">
+                                <div className="space-y-1">
+                                    <h3 className="text-base font-bold flex items-center gap-2">
+                                        📧 Resend SMTP & Automated Outreach
+                                    </h3>
+                                    <p className="text-xs text-gray-500">
+                                        Configure customized email workflows triggered automatically when community members download or cancel.
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    {userTier === 'FREE' && (
+                                        <span className="px-2 py-0.5 rounded bg-rose-500/10 border border-rose-500/20 text-rose-400 text-[10px] font-bold">
+                                            🔒 Automations locked (Requires Premium)
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <form onSubmit={handleSaveSettings} className="space-y-6">
+                                {/* Resend API Key Config */}
+                                <div className="max-w-xl space-y-2">
+                                    <label className="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Resend API Key</label>
+                                    <input
+                                        type="password"
+                                        value={resendApiKey}
+                                        onChange={(e) => setResendApiKey(e.target.value)}
+                                        disabled={userTier === 'FREE'}
+                                        placeholder={userTier === 'FREE' ? "Upgrade to Premium to input API Key" : "re_..."}
+                                        className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50 font-mono disabled:opacity-40"
+                                    />
+                                    <p className="text-[10px] text-gray-500">
+                                        Resend is free for up to 3,000 emails/month. Get your API key from <a href="https://resend.com" target="_blank" rel="noreferrer" className="text-amber-500 hover:underline">resend.com</a>.
+                                    </p>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                                    {/* Welcome Email Column */}
+                                    <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">1. Welcome Email</h4>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={autoWelcomeEmail}
+                                                    onChange={(e) => setAutoWelcomeEmail(e.target.checked)}
+                                                    disabled={userTier === 'FREE'}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-9 h-5 bg-[#14151f] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-500 peer-checked:after:bg-black peer-checked:after:border-amber-500 peer-disabled:opacity-30" />
+                                            </label>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] text-gray-400 font-semibold uppercase">Subject Line</label>
+                                                <input
+                                                    type="text"
+                                                    value={welcomeEmailSubject}
+                                                    onChange={(e) => setWelcomeEmailSubject(e.target.value)}
+                                                    disabled={userTier === 'FREE' || !autoWelcomeEmail}
+                                                    placeholder="Welcome to the community!"
+                                                    className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50 disabled:opacity-40"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] text-gray-400 font-semibold uppercase">Email Body (HTML/Markdown)</label>
+                                                <textarea
+                                                    rows={6}
+                                                    value={welcomeEmailBody}
+                                                    onChange={(e) => setWelcomeEmailBody(e.target.value)}
+                                                    disabled={userTier === 'FREE' || !autoWelcomeEmail}
+                                                    placeholder={`Hey {firstName}!\n\nWelcome to {appSource}. We're thrilled to have you onboard.\n\nReply directly to this email if you need anything!\n\n- Jude`}
+                                                    className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50 font-mono disabled:opacity-40"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Cancellation Email Column */}
+                                    <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <h4 className="text-xs font-bold uppercase tracking-wider text-rose-400">2. Cancellation Feedback survey</h4>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={autoCancelEmail}
+                                                    onChange={(e) => setAutoCancelEmail(e.target.checked)}
+                                                    disabled={userTier === 'FREE'}
+                                                    className="sr-only peer"
+                                                />
+                                                <div className="w-9 h-5 bg-[#14151f] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-gray-400 after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-rose-500 peer-checked:after:bg-black peer-checked:after:border-rose-500 peer-disabled:opacity-30" />
+                                            </label>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] text-gray-400 font-semibold uppercase">Subject Line</label>
+                                                <input
+                                                    type="text"
+                                                    value={cancelEmailSubject}
+                                                    onChange={(e) => setCancelEmailSubject(e.target.value)}
+                                                    disabled={userTier === 'FREE' || !autoCancelEmail}
+                                                    placeholder="Checking in..."
+                                                    className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50 disabled:opacity-40"
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <label className="text-[9px] text-gray-400 font-semibold uppercase">Email Body (HTML/Markdown)</label>
+                                                <textarea
+                                                    rows={6}
+                                                    value={cancelEmailBody}
+                                                    onChange={(e) => setCancelEmailBody(e.target.value)}
+                                                    disabled={userTier === 'FREE' || !autoCancelEmail}
+                                                    placeholder={`Hi {firstName},\n\nI noticed you cancelled your subscription to {appSource}.\n\nCould you share why? Was it pricing or did we miss a feature you wanted?\n\n- Jude`}
+                                                    className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50 font-mono disabled:opacity-40"
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="p-3.5 rounded-lg bg-amber-500/5 border border-amber-500/10 text-xs text-gray-400 space-y-1">
+                                    <p className="font-semibold text-amber-400">💡 Dynamic Variable Placeholders:</p>
+                                    <p>Use any of the following parameters in your subject or email body to customize client outreach:</p>
+                                    <div className="grid grid-cols-2 md:grid-cols-5 gap-2 pt-1 font-mono text-[10px] text-amber-500/80">
+                                        <div>{"{firstName}"} - User first name</div>
+                                        <div>{"{name}"} - User full name</div>
+                                        <div>{"{appSource}"} - The App name</div>
+                                        <div>{"{userTier}"} - e.g. Trial, Paid</div>
+                                        <div>{"{email}"} - User email address</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        type="submit"
+                                        disabled={userTier === 'FREE' || saveStatus === 'saving'}
+                                        className="px-5 py-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-black font-bold text-xs transition duration-300 hover:from-amber-400 hover:to-amber-500 disabled:opacity-40"
+                                    >
+                                        {saveStatus === 'saving' ? 'Saving automations...' : '💾 Save Email Configuration'}
+                                    </button>
+                                    {saveStatus === 'success' && (
+                                        <span className="text-xs text-emerald-400 font-semibold animate-pulse">
+                                            ✅ Configurations saved successfully!
+                                        </span>
+                                    )}
+                                </div>
+                            </form>
+                        </div>
+
+                        {/* 3. CRM Customer Directory */}
+                        <div className="p-6 rounded-xl bg-[#0A0B10] border border-white/[0.04] space-y-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="space-y-1">
+                                    <h3 className="text-base font-bold">👥 CRM Customer Directory</h3>
+                                    <p className="text-xs text-gray-500">
+                                        View detailed profile logs of everyone who has connected to your mini apps.
+                                    </p>
+                                </div>
+                                
+                                {/* Search input */}
+                                <input
+                                    type="text"
+                                    placeholder="Search by name, email, or username..."
+                                    value={crmSearchQuery}
+                                    onChange={(e) => setCrmSearchQuery(e.target.value)}
+                                    className="w-full sm:w-72 px-4 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                                />
+                            </div>
+
+                            {/* Customer grid/table */}
+                            <div className="overflow-x-auto">
+                                {customers.length === 0 ? (
+                                    <div className="p-12 text-center text-xs text-gray-500 border border-dashed border-white/5 rounded-xl">
+                                        No customers recorded yet. Seed mock data or wait for webhooks.
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3 min-w-[700px]">
+                                        {/* Header Row */}
+                                        <div className="grid grid-cols-12 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-gray-500 border-b border-white/[0.03]">
+                                            <div className="col-span-4">User Details</div>
+                                            <div className="col-span-3">App Source</div>
+                                            <div className="col-span-2 text-center">Status</div>
+                                            <div className="col-span-2">Joined</div>
+                                            <div className="col-span-1 text-right">Actions</div>
+                                        </div>
+
+                                        {/* Rows */}
+                                        {customers
+                                            .filter(c => {
+                                                const query = crmSearchQuery.toLowerCase();
+                                                return (
+                                                    c.email.toLowerCase().includes(query) ||
+                                                    (c.name || '').toLowerCase().includes(query) ||
+                                                    (c.username || '').toLowerCase().includes(query)
+                                                );
+                                            })
+                                            .map((customer) => {
+                                                const app = apps.find(a => a.id === customer.appId);
+                                                return (
+                                                    <div 
+                                                        key={customer.id} 
+                                                        className="grid grid-cols-12 items-center px-4 py-3 rounded-lg bg-white/[0.01] border border-white/[0.02] hover:border-white/5 transition"
+                                                    >
+                                                        {/* Avatar + name/email */}
+                                                        <div className="col-span-4 flex items-center gap-3">
+                                                            {customer.profilePictureUrl ? (
+                                                                <img 
+                                                                    src={customer.profilePictureUrl} 
+                                                                    alt={customer.name || customer.email}
+                                                                    className="w-8 h-8 rounded-full border border-white/10 object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 flex items-center justify-center font-bold text-xs">
+                                                                    {(customer.name || customer.username || customer.email)[0].toUpperCase()}
+                                                                </div>
+                                                            )}
+                                                            <div>
+                                                                <div className="text-xs font-bold text-gray-200">
+                                                                    {customer.name || 'Anonymous User'}
+                                                                </div>
+                                                                <div className="text-[10px] text-gray-500 flex items-center gap-1">
+                                                                    <span>@{customer.username || 'no_handle'}</span>
+                                                                    <span>•</span>
+                                                                    <span>{customer.email}</span>
+                                                                </div>
+                                                                {customer.bio && (
+                                                                    <div className="text-[9px] text-gray-400 italic line-clamp-1 mt-0.5 max-w-[200px]">
+                                                                        "{customer.bio}"
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* App Source */}
+                                                        <div className="col-span-3 text-xs text-gray-400">
+                                                            {app ? app.appName : 'Unknown App'}
+                                                        </div>
+
+                                                        {/* Status */}
+                                                        <div className="col-span-2 text-center">
+                                                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                                                                customer.status === 'ACTIVE'
+                                                                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                                                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                                                            }`}>
+                                                                {customer.status}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Joined Date */}
+                                                        <div className="col-span-2 text-[10px] text-gray-500">
+                                                            {new Date(customer.joinedCohortMonth).toLocaleDateString(undefined, { year: 'numeric', month: 'short' })}
+                                                        </div>
+
+                                                        {/* Chat link */}
+                                                        <div className="col-span-1 text-right">
+                                                            <a 
+                                                                href={`https://whop.com/member/${customer.whopCustomerId}`}
+                                                                target="_blank"
+                                                                rel="noreferrer"
+                                                                className="px-2 py-1 rounded bg-[#14151f] hover:bg-amber-500/10 text-gray-400 hover:text-amber-400 text-[10px] font-bold border border-white/5 transition"
+                                                            >
+                                                                💬 Chat
+                                                            </a>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })
+                                        }
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 4. Danger Zone / Mock Data Reset */}
+                        <div className="p-6 rounded-xl bg-red-950/10 border border-red-500/20 space-y-4">
+                            <div className="space-y-1">
+                                <h3 className="text-sm font-bold text-red-400">⚠️ Danger Zone</h3>
+                                <p className="text-xs text-gray-500">
+                                    Permanently reset the database for your account. This wipes all customer and transaction logs.
+                                </p>
+                            </div>
+                            <button
+                                onClick={async () => {
+                                    if (confirm('Are you absolutely sure you want to delete all customers and transactions from your connected apps? This cannot be undone.')) {
+                                        const res = await resetDeveloperDatabase();
+                                        if (res.success) {
+                                            alert('🗑️ Your database has been successfully wiped and reset.');
+                                            window.location.reload();
+                                        } else {
+                                            alert(`Error: ${res.error}`);
+                                        }
+                                    }
+                                }}
+                                className="px-4 py-2.5 rounded-lg border border-red-500/20 bg-red-950/40 text-red-400 hover:bg-red-900/40 font-bold text-xs transition active:scale-[0.98]"
+                            >
+                                Reset Developer Database / Delete Mock Data
+                            </button>
+                        </div>
                     </div>
                 )}
 

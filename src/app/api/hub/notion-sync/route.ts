@@ -55,22 +55,57 @@ export async function POST(req: Request) {
             });
         }
 
-        // Upsert Customer to capture the cohort signup month
+        // Check storage limits for FREE tier users
+        const incomingStatus = data.status || 'ACTIVE';
+        if (developerUser && developerUser.tier === 'FREE') {
+            const appIds = await db.whopApp.findMany({
+                where: { userId: developerUser.id },
+                select: { id: true }
+            }).then(apps => apps.map(a => a.id));
+
+            const [customerCount, transactionCount] = await Promise.all([
+                db.customer.count({ where: { appId: { in: appIds } } }),
+                db.transaction.count({ where: { appId: { in: appIds } } })
+            ]);
+
+            // Assume ~1.5 KB per record
+            const estimatedBytes = (customerCount + transactionCount) * 1500;
+            const limitBytes = 100 * 1024 * 1024; // 100 MB
+
+            if (estimatedBytes >= limitBytes) {
+                console.warn(`[Storage Warning] User ${developerUser.email} has exceeded FREE tier storage limits (100MB). Syncing skipped.`);
+                return NextResponse.json(
+                    { error: 'Database storage limit exceeded for the FREE plan. Please upgrade to PREMIUM to continue syncing.' },
+                    { status: 403 }
+                );
+            }
+        }
+
+        // Upsert Customer to capture the cohort signup month & user details
         const now = new Date();
         const cohortMonth = new Date(now.getFullYear(), now.getMonth(), 1); // Start of month
+        const profilePic = data.profilePictureUrl || (data as any).profile_picture?.url || (typeof (data as any).profile_picture === 'string' ? (data as any).profile_picture : null);
 
         await db.customer.upsert({
             where: { whopCustomerId: data.whopUserId },
             update: {
                 email: data.email,
-                status: 'ACTIVE' // Reactivated or updated
+                name: data.name || data.firstName || null,
+                username: data.username || null,
+                bio: data.bio || null,
+                profilePictureUrl: profilePic || null,
+                status: incomingStatus
             },
             create: {
                 whopCustomerId: data.whopUserId,
                 email: data.email,
                 appId: app.id,
+                name: data.name || data.firstName || null,
+                username: data.username || null,
+                bio: data.bio || null,
+                profilePictureUrl: profilePic || null,
                 joinedCohortMonth: cohortMonth,
-                status: 'ACTIVE'
+                status: incomingStatus
             }
         });
 
@@ -104,32 +139,72 @@ export async function POST(req: Request) {
             console.error('[CRM Sync Error] Notion failed to sync, continuing with Local DB:', notionErr);
         }
 
-        // 5. Fire the Growth Hook Automated Email (Welcome Campaign)
-        if (data.email) {
-            await sendEmail({
-                to: data.email,
-                subject: `Welcome to ${data.appSource}! 🚀`,
-                html: `
-                    <div style="font-family: sans-serif; max-width: 600px; padding: 20px; border: 1px solid #eaeaea; border-radius: 8px;">
-                        <h2 style="color: #111;">Hey ${data.firstName || 'there'}!</h2>
-                        <p style="font-size: 16px; line-height: 1.5; color: #444;">
-                            Welcome to <b>${data.appSource}</b>. We are thrilled to have you inside the ecosystem.
-                        </p>
-                        <p style="font-size: 16px; line-height: 1.5; color: #444;">
-                            Your workspace and tier (<b>${data.userTier}</b>) have been fully provisioned and logged in our system.
-                        </p>
-                        <p style="font-size: 16px; line-height: 1.5; color: #444;">
-                            If you have any questions or need help setting up your app, simply reply to this email and I will get back to you directly.
-                        </p>
-                        <br/>
-                        <p style="font-size: 16px; font-weight: bold; color: #111;">Let's build something great.</p>
-                        <p style="font-size: 14px; color: #777;"><b>- Jude Victor Olaboboye</b></p>
-                    </div>
-                `
-            }).catch(emailErr => {
-                // Log SMTP transporter issues but do not fail the API response
-                console.error('[SMTP Transporter Error] Failed to send welcome email:', emailErr);
-            });
+        // 5. Fire the Growth Hook Automated Emails (Welcome or Cancellation Campaign)
+        if (data.email && developerUser) {
+            const isPremium = developerUser.tier === 'PREMIUM';
+
+            if (!isPremium) {
+                console.log(`[Email Campaign] Skipping automated email for ${data.email} because developer ${developerUser.email} is on the FREE tier.`);
+            } else {
+                let decryptedResendKey: string | undefined = undefined;
+                if (developerUser.resendApiKey) {
+                    try {
+                        const { decryptToken } = await import('@/lib/encryption');
+                        decryptedResendKey = decryptToken(developerUser.resendApiKey);
+                    } catch (resendDecErr) {
+                        console.error('Failed to decrypt custom developer Resend API key:', resendDecErr);
+                    }
+                }
+
+                const formatTemplate = (template: string | null, fallback: string): string => {
+                    const text = template || fallback;
+                    return text
+                        .replace(/{firstName}/g, data.firstName || 'there')
+                        .replace(/{name}/g, data.name || data.firstName || 'there')
+                        .replace(/{appSource}/g, data.appSource || '')
+                        .replace(/{userTier}/g, data.userTier || '')
+                        .replace(/{email}/g, data.email || '');
+                };
+
+                const isCancelled = incomingStatus === 'CANCELLED';
+
+                if (isCancelled && developerUser.autoCancelEmail) {
+                    const subject = formatTemplate(developerUser.cancelEmailSubject, "Checking in...");
+                    const body = formatTemplate(
+                        developerUser.cancelEmailBody,
+                        `Hi {firstName},\n\nI noticed you cancelled your access to {appSource}. I'm reaching out personally to see if you can share some honest feedback to help me improve the experience. Was it pricing, or was it missing a feature you expected?\n\nThanks,\nJude Victor Olaboboye`
+                    );
+
+                    // Convert plain text body to simple HTML if not already HTML
+                    const htmlBody = body.includes('<') ? body : `<div style="font-family: sans-serif; white-space: pre-line; line-height: 1.5; color: #333;">${body}</div>`;
+
+                    await sendEmail({
+                        to: data.email,
+                        subject,
+                        html: htmlBody,
+                        resendApiKey: decryptedResendKey
+                    }).catch(emailErr => {
+                        console.error('[SMTP Transporter Error] Failed to send cancellation email:', emailErr);
+                    });
+                } else if (!isCancelled && developerUser.autoWelcomeEmail) {
+                    const subject = formatTemplate(developerUser.welcomeEmailSubject, `Welcome to {appSource}! 🚀`);
+                    const body = formatTemplate(
+                        developerUser.welcomeEmailBody,
+                        `Hey {firstName}!\n\nWelcome to {appSource}. We are thrilled to have you inside the ecosystem.\n\nYour workspace and tier ({userTier}) have been fully provisioned.\n\nIf you have any questions, reply to this email directly.\n\nLet's build something great!\n\n- Jude Victor Olaboboye`
+                    );
+
+                    const htmlBody = body.includes('<') ? body : `<div style="font-family: sans-serif; white-space: pre-line; line-height: 1.5; color: #333;">${body}</div>`;
+
+                    await sendEmail({
+                        to: data.email,
+                        subject,
+                        html: htmlBody,
+                        resendApiKey: decryptedResendKey
+                    }).catch(emailErr => {
+                        console.error('[SMTP Transporter Error] Failed to send welcome email:', emailErr);
+                    });
+                }
+            }
         }
 
         return NextResponse.json({ 

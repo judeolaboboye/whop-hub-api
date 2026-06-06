@@ -20,6 +20,11 @@ export interface HubSyncPayload {
     email: string; // Required for the Growth Hook activation
     whopUserId: string;
     appUsageLogUrl?: string; // Optional deep link to logs
+    name?: string;
+    username?: string;
+    bio?: string;
+    profilePictureUrl?: string;
+    status?: string;
 }
 
 /**

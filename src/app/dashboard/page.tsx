@@ -2,7 +2,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import DashboardClient from './DashboardClient';
 import { estimateTransactionFinance } from '@/lib/analytics';
-import { getLeaderboard } from '@/app/actions/leaderboard';
+import { getLeaderboard, syncDeveloperScore } from '@/app/actions/leaderboard';
 import { redirect } from 'next/navigation';
 
 /**
@@ -172,14 +172,28 @@ export default async function DashboardPage() {
         new Date(b.processedAt).getTime() - new Date(a.processedAt).getTime()
     );
 
+    // 3-Month Cutoff for FREE tier
+    const isFreeTier = user!.tier === 'FREE';
+    const cutoffDate = new Date();
+    cutoffDate.setMonth(cutoffDate.getMonth() - 3);
+
+    const filteredTransactions = isFreeTier
+        ? allTransactions.filter(t => new Date(t.processedAt) >= cutoffDate)
+        : allTransactions;
+
     // Prepare serialized data props
-    const serializedApps = allApps.map(a => ({
-        id: a.id,
-        whopAppId: a.whopAppId,
-        appName: a.appName,
-        customerCount: a.customers.length,
-        transactionCount: a.transactions.length
-    }));
+    const serializedApps = allApps.map(a => {
+        const appTxs = isFreeTier
+            ? a.transactions.filter(t => new Date(t.processedAt) >= cutoffDate)
+            : a.transactions;
+        return {
+            id: a.id,
+            whopAppId: a.whopAppId,
+            appName: a.appName,
+            customerCount: a.customers.length,
+            transactionCount: appTxs.length
+        };
+    });
 
     const serializedCustomers = allCustomers.map(c => ({
         id: c.id,
@@ -187,10 +201,14 @@ export default async function DashboardPage() {
         email: c.email,
         appId: c.appId,
         joinedCohortMonth: c.joinedCohortMonth.toISOString(),
-        status: c.status
+        status: c.status,
+        name: c.name,
+        username: c.username,
+        bio: c.bio,
+        profilePictureUrl: c.profilePictureUrl
     }));
 
-    const serializedTransactions = allTransactions.map(t => {
+    const serializedTransactions = filteredTransactions.map(t => {
         const app = allApps.find(a => a.id === t.appId);
         return {
             id: t.id,
@@ -210,6 +228,7 @@ export default async function DashboardPage() {
     // Decrypt developer settings if they exist
     let decryptedNotionKey = '';
     let decryptedNotionDb = '';
+    let decryptedResendKey = '';
 
     if (user!.notionApiKey) {
         try {
@@ -227,6 +246,14 @@ export default async function DashboardPage() {
             console.error('Failed to decrypt notionDatabaseId:', err);
         }
     }
+    if (user!.resendApiKey) {
+        try {
+            const { decryptToken } = await import('@/lib/encryption');
+            decryptedResendKey = decryptToken(user!.resendApiKey);
+        } catch (err) {
+            console.error('Failed to decrypt resendApiKey:', err);
+        }
+    }
 
     const serializedSettings = {
         notionApiKey: decryptedNotionKey,
@@ -234,7 +261,22 @@ export default async function DashboardPage() {
         leaderboardOptIn: user!.leaderboardOptIn,
         leaderboardName: user!.leaderboardName || '',
         retentionMonths: user!.retentionMonths,
+        tier: user!.tier,
+        resendApiKey: decryptedResendKey,
+        autoWelcomeEmail: user!.autoWelcomeEmail,
+        autoCancelEmail: user!.autoCancelEmail,
+        welcomeEmailSubject: user!.welcomeEmailSubject || 'Welcome to the community!',
+        welcomeEmailBody: user!.welcomeEmailBody || '',
+        cancelEmailSubject: user!.cancelEmailSubject || 'Checking in...',
+        cancelEmailBody: user!.cancelEmailBody || '',
     };
+
+    // Synchronize developer standings into the global shared community leaderboard
+    try {
+        await syncDeveloperScore(user!.id);
+    } catch (syncErr) {
+        console.error('Failed to auto-sync developer score on dashboard render:', syncErr);
+    }
 
     // Fetch public leaderboard entries
     const leaderboardData = await getLeaderboard();
