@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import Link from "next/link";
+import { db } from "@/lib/db";
 
 /**
  * Premium onboarding and landing homepage for the Whop Developers Hub
@@ -8,6 +9,16 @@ export default async function Home() {
     const cookieStore = await cookies();
     const userId = cookieStore.get("whop_session_user_id")?.value;
     const isLoggedIn = !!userId;
+
+    // Fetch live community standings for public display
+    const entries = await db.sharedLeaderboardEntry.findMany({
+        orderBy: {
+            monthlyGross: 'desc'
+        }
+    }).catch(err => {
+        console.error("Failed to fetch public leaderboard entries for landing page:", err);
+        return [];
+    });
 
     return (
         <div className="relative min-h-screen bg-[#090A0F] text-white flex flex-col justify-between overflow-hidden font-sans">
@@ -105,6 +116,83 @@ export default async function Home() {
                             </Link>
                         </>
                     )}
+                </div>
+
+                {/* VERIFIED PUBLIC LEADERBOARD */}
+                <div className="w-full max-w-3xl mx-auto space-y-6 pt-8 pb-4 text-left">
+                    <div className="text-center space-y-2">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1b1c26] border border-white/5 text-[10px] text-amber-400 font-bold uppercase tracking-wider">
+                            🏆 Network Scoreboard
+                        </div>
+                        <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
+                            Public Community Leaderboard
+                        </h3>
+                        <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
+                            See what developers are earning building mini apps on Whop. Standing amounts are verified dynamically via Whop payment ledgers.
+                        </p>
+                    </div>
+
+                    <div className="overflow-hidden rounded-xl border border-white/[0.04] bg-[#0A0B10]/60 backdrop-blur-md">
+                        {entries.length === 0 ? (
+                            <div className="p-8 text-center text-xs text-gray-500">
+                                No developers are currently sharing their standings. Opt-in via dashboard settings to show up here!
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-white/[0.04] bg-white/[0.02] text-[10px] font-bold uppercase tracking-wider text-gray-500">
+                                            <th className="p-4 text-center w-16">Rank</th>
+                                            <th className="p-4">Developer</th>
+                                            <th className="p-4 text-right">Est. MRR (Monthly)</th>
+                                            <th className="p-4 text-right">Est. ARR (Yearly)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/[0.02]">
+                                        {entries.map((item, idx) => {
+                                            const isTop3 = idx < 3;
+                                            const rankBadges = ["🥇", "🥈", "🥉"];
+                                            const rankColors = ["text-amber-400 font-bold", "text-slate-300 font-bold", "text-amber-700 font-bold"];
+                                            const rankBg = ["bg-amber-500/[0.03]", "bg-slate-300/[0.01]", "bg-amber-700/[0.01]"];
+
+                                            return (
+                                                <tr 
+                                                    key={item.id} 
+                                                    className={`hover:bg-white/[0.01] transition-colors ${isTop3 ? rankBg[idx] : ''}`}
+                                                >
+                                                    <td className="p-4 text-center font-mono font-bold text-gray-400">
+                                                        {isTop3 ? (
+                                                            <span className="text-lg">{rankBadges[idx]}</span>
+                                                        ) : (
+                                                            <span>#{idx + 1}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`font-semibold ${isTop3 ? rankColors[idx] : 'text-white'}`}>
+                                                                {item.developerName}
+                                                            </span>
+                                                            {isTop3 && (
+                                                                <span className="text-[9px] px-1.5 py-0.2 bg-amber-500/10 text-amber-400 border border-amber-500/20 rounded font-bold uppercase tracking-wider">
+                                                                    Verified
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-4 text-right font-mono font-bold text-emerald-400">
+                                                        ${Number(item.monthlyGross).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </td>
+                                                    <td className="p-4 text-right font-mono font-bold text-amber-500">
+                                                        ${Number(item.yearlyGross).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Feature Highlights Grid */}
