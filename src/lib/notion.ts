@@ -25,14 +25,26 @@ export interface HubSyncPayload {
 /**
  * Inserts or updates a user record in the Central Notion CRM.
  */
-export async function syncUserToNotion(payload: HubSyncPayload) {
-    if (!DATABASE_ID) {
-        throw new Error('Notion Database ID is missing. Please set NOTION_DATABASE_ID in .env.local');
+export async function syncUserToNotion(
+    payload: HubSyncPayload,
+    customApiKey?: string,
+    customDatabaseId?: string
+) {
+    const apiKey = customApiKey || process.env.NOTION_API_KEY;
+    const databaseId = customDatabaseId || DATABASE_ID;
+
+    if (!apiKey) {
+        throw new Error('Notion API Key is missing.');
+    }
+    if (!databaseId) {
+        throw new Error('Notion Database ID is missing.');
     }
 
+    const activeClient = customApiKey ? new Client({ auth: apiKey }) : notion;
+
     try {
-        const response = await notion.pages.create({
-            parent: { database_id: DATABASE_ID },
+        const response = await activeClient.pages.create({
+            parent: { database_id: databaseId },
             properties: {
                 "App_Source": {
                     title: [
@@ -43,11 +55,11 @@ export async function syncUserToNotion(payload: HubSyncPayload) {
                 },
                 "App_User's_FirstName": {
                     rich_text: [
-                        { text: { content: payload.firstName } }
+                        { text: { content: payload.firstName || '' } }
                     ],
                 },
                 User_Tier: {
-                    select: { name: payload.userTier },
+                    select: { name: payload.userTier || 'Trial' },
                 },
                 Email: {
                     email: payload.email,
@@ -59,7 +71,7 @@ export async function syncUserToNotion(payload: HubSyncPayload) {
                 },
                 "Niche/Category": {
                     rich_text: [
-                        { text: { content: payload.nicheCategory } }
+                        { text: { content: payload.nicheCategory || 'General' } }
                     ],
                 },
                 "User's_App_Usage&Log": {

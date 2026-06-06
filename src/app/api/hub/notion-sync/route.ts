@@ -23,8 +23,11 @@ export async function POST(req: Request) {
         // 3. Local PostgreSQL DB Synchronization
         // Look up corresponding WhopApp by appName (or create fallback if developer hasn't OAuth-ed yet)
         let app = await db.whopApp.findFirst({
-            where: { appName: data.appSource }
+            where: { appName: data.appSource },
+            include: { user: true }
         });
+
+        let developerUser = app?.user;
 
         if (!app) {
             let developer = await db.user.findFirst();
@@ -40,13 +43,15 @@ export async function POST(req: Request) {
                     }
                 });
             }
+            developerUser = developer;
 
             app = await db.whopApp.create({
                 data: {
                     whopAppId: `app_${data.appSource.toLowerCase().replace(/[^a-z0-9]/g, '_')}`,
                     appName: data.appSource,
                     userId: developer.id
-                }
+                },
+                include: { user: true }
             });
         }
 
@@ -69,9 +74,32 @@ export async function POST(req: Request) {
             }
         });
 
-        // 4. Push the data to the Central Notion CRM
+        // Decrypt developer-specific Notion keys if they exist
+        let decryptedNotionKey: string | undefined = undefined;
+        let decryptedNotionDb: string | undefined = undefined;
+
+        if (developerUser?.notionApiKey && developerUser?.notionDatabaseId) {
+            try {
+                const { decryptToken } = await import('@/lib/encryption');
+                decryptedNotionKey = decryptToken(developerUser.notionApiKey);
+                decryptedNotionDb = decryptToken(developerUser.notionDatabaseId);
+            } catch (decErr) {
+                console.error('Failed to decrypt custom developer Notion keys:', decErr);
+            }
+        }
+
+        // 4. Push the data to the Central Notion CRM (user-scoped or default fallback)
+        let crmSynced = false;
         try {
-            await syncUserToNotion(data);
+            if (decryptedNotionKey && decryptedNotionDb) {
+                await syncUserToNotion(data, decryptedNotionKey, decryptedNotionDb);
+                crmSynced = true;
+            } else if (process.env.NOTION_API_KEY && process.env.NOTION_DATABASE_ID) {
+                await syncUserToNotion(data);
+                crmSynced = true;
+            } else {
+                console.log('[CRM Sync] No Notion CRM credentials configured. Skipping Notion API call.');
+            }
         } catch (notionErr) {
             console.error('[CRM Sync Error] Notion failed to sync, continuing with Local DB:', notionErr);
         }

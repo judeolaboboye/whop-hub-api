@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { db } from '@/lib/db';
 import DashboardClient from './DashboardClient';
 import { estimateTransactionFinance } from '@/lib/analytics';
+import { getLeaderboard } from '@/app/actions/leaderboard';
 
 /**
  * Server Component for the Hub Command Center Dashboard
@@ -254,12 +255,46 @@ export default async function DashboardPage() {
         };
     });
 
+    // Decrypt developer settings if they exist
+    let decryptedNotionKey = '';
+    let decryptedNotionDb = '';
+
+    if (user!.notionApiKey) {
+        try {
+            const { decryptToken } = await import('@/lib/encryption');
+            decryptedNotionKey = decryptToken(user!.notionApiKey);
+        } catch (err) {
+            console.error('Failed to decrypt notionApiKey:', err);
+        }
+    }
+    if (user!.notionDatabaseId) {
+        try {
+            const { decryptToken } = await import('@/lib/encryption');
+            decryptedNotionDb = decryptToken(user!.notionDatabaseId);
+        } catch (err) {
+            console.error('Failed to decrypt notionDatabaseId:', err);
+        }
+    }
+
+    const serializedSettings = {
+        notionApiKey: decryptedNotionKey,
+        notionDatabaseId: decryptedNotionDb,
+        leaderboardOptIn: user!.leaderboardOptIn,
+        leaderboardName: user!.leaderboardName || '',
+        retentionMonths: user!.retentionMonths,
+    };
+
+    // Fetch public leaderboard entries
+    const leaderboardData = await getLeaderboard();
+
     return (
         <DashboardClient 
             userEmail={user!.email}
             apps={serializedApps}
             customers={serializedCustomers}
             transactions={serializedTransactions}
+            settings={serializedSettings}
+            leaderboard={leaderboardData}
         />
     );
 }

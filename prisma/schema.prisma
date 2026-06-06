@@ -8,17 +8,28 @@ generator client {
 
 // 1. The Developer / Business Owner using your hub
 model User {
-  id            String   @id @default(uuid())
-  email         String   @unique
-  whopUserId    String   @unique // From Whop OAuth
-  accessToken   String   // Encrypted Whop OAuth token
-  refreshToken  String   // Used to refresh access
-  tokenExpires  DateTime
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  email              String   @unique
+  whopUserId         String   @unique // From Whop OAuth
+  accessToken        String   // Encrypted Whop OAuth token
+  refreshToken       String   // Used to refresh access
+  tokenExpires       DateTime
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
   
+  // Custom Notion CRM Integration per developer (Encrypted)
+  notionApiKey       String?
+  notionDatabaseId   String?
+
+  // Leaderboard Settings (Opt-in only)
+  leaderboardOptIn   Boolean  @default(false)
+  leaderboardName    String?  // Custom display name on public leaderboard
+
+  // Database Pruning & Data Retention (Months, 0 = Keep forever)
+  retentionMonths    Int      @default(0)
+
   // Relations
-  apps          WhopApp[]
+  apps               WhopApp[]
 }
 
 // 2. The separate Whop Apps managed under one unified dashboard

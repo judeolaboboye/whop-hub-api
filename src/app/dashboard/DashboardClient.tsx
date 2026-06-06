@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { calculateCohorts, generateBookkeepingCSV } from '@/lib/analytics';
+import { updateUserSettings } from '@/app/actions/settings';
 
 interface AppProp {
     id: string;
@@ -34,27 +35,58 @@ interface TransactionProp {
     processedAt: string;
 }
 
+interface UserSettingsProp {
+    notionApiKey: string;
+    notionDatabaseId: string;
+    leaderboardOptIn: boolean;
+    leaderboardName: string;
+    retentionMonths: number;
+}
+
+interface LeaderboardEntryProp {
+    name: string;
+    monthlyEarnings: number;
+    yearlyEarnings: number;
+    appCount: number;
+}
+
 interface DashboardClientProps {
     userEmail: string;
     apps: AppProp[];
     customers: CustomerProp[];
     transactions: TransactionProp[];
+    settings: UserSettingsProp;
+    leaderboard: LeaderboardEntryProp[];
 }
 
 /**
- * Client Component managing dashboard layout and analytics calculations
+ * Premium Command Center Client dashboard with charts, settings, leaderboard, cohorts, and bookkeeping ledger
  */
 export default function DashboardClient({
     userEmail,
     apps,
     customers,
     transactions,
+    settings,
+    leaderboard,
 }: DashboardClientProps) {
     const [selectedAppId, setSelectedAppId] = useState<string>('all');
-    const [activeTab, setActiveTab] = useState<'overview' | 'cohorts' | 'ledger' | 'generator'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'cohorts' | 'ledger' | 'generator' | 'leaderboard' | 'settings'>('overview');
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedCountry, setSelectedCountry] = useState('all');
     const [copiedSnippet, setCopiedSnippet] = useState<boolean>(false);
+
+    // Settings Form States
+    const [notionApiKey, setNotionApiKey] = useState(settings.notionApiKey || '');
+    const [notionDatabaseId, setNotionDatabaseId] = useState(settings.notionDatabaseId || '');
+    const [leaderboardOptIn, setLeaderboardOptIn] = useState(settings.leaderboardOptIn);
+    const [leaderboardName, setLeaderboardName] = useState(settings.leaderboardName || '');
+    const [retentionMonths, setRetentionMonths] = useState(settings.retentionMonths);
+    const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+    const [errorMessage, setErrorMessage] = useState('');
+
+    // Leaderboard Toggle (Monthly vs Yearly)
+    const [leaderboardPeriod, setLeaderboardPeriod] = useState<'monthly' | 'yearly'>('monthly');
 
     // 1. Filter data based on selected Whop App
     const filteredCustomers = useMemo(() => {
@@ -67,7 +99,27 @@ export default function DashboardClient({
         return transactions.filter(t => t.appId === selectedAppId);
     }, [transactions, selectedAppId]);
 
-    // 1.5 Revenue Share by App and Country Calculations
+    // 2. Overview Analytics Calculations
+    const metrics = useMemo(() => {
+        const gross = filteredTransactions.reduce((sum, t) => sum + t.grossAmount, 0);
+        const net = filteredTransactions.reduce((sum, t) => sum + t.netAmount, 0);
+        const tax = filteredTransactions.reduce((sum, t) => sum + t.taxAmount, 0);
+        const totalCust = filteredCustomers.length;
+        const activeCust = filteredCustomers.filter(c => c.status === 'ACTIVE').length;
+        const churnedCust = filteredCustomers.filter(c => c.status === 'CHURNED' || c.status === 'CANCELLED').length;
+        const churnRate = totalCust > 0 ? parseFloat(((churnedCust / totalCust) * 100).toFixed(1)) : 0;
+
+        return {
+            gross: parseFloat(gross.toFixed(2)),
+            net: parseFloat(net.toFixed(2)),
+            tax: parseFloat(tax.toFixed(2)),
+            totalCustomers: totalCust,
+            activeCustomers: activeCust,
+            churnRate,
+        };
+    }, [filteredTransactions, filteredCustomers]);
+
+    // 2.5 Revenue Share by App and Country Calculations
     const revenueByApp = useMemo(() => {
         const appMap: Record<string, { name: string; gross: number }> = {};
         filteredTransactions.forEach(t => {
@@ -111,25 +163,87 @@ export default function DashboardClient({
         return 'https://hub-api-taupe.vercel.app';
     }, []);
 
-    // 2. Overview Analytics Calculations
-    const metrics = useMemo(() => {
-        const gross = filteredTransactions.reduce((sum, t) => sum + t.grossAmount, 0);
-        const net = filteredTransactions.reduce((sum, t) => sum + t.netAmount, 0);
-        const tax = filteredTransactions.reduce((sum, t) => sum + t.taxAmount, 0);
-        const totalCust = filteredCustomers.length;
-        const activeCust = filteredCustomers.filter(c => c.status === 'ACTIVE').length;
-        const churnedCust = filteredCustomers.filter(c => c.status === 'CHURNED' || c.status === 'CANCELLED').length;
-        const churnRate = totalCust > 0 ? parseFloat(((churnedCust / totalCust) * 100).toFixed(1)) : 0;
+    // 2.8 12-Month Multi-App SVG Trend Charts Calculation
+    const chartData = useMemo(() => {
+        const months: { key: string; label: string; apps: Record<string, number>; total: number }[] = [];
+        const now = new Date();
+        for (let i = 11; i >= 0; i--) {
+            const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            months.push({
+                key: `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`,
+                label: date.toLocaleString('default', { month: 'short' }),
+                apps: {} as Record<string, number>,
+                total: 0
+            });
+        }
+
+        filteredTransactions.forEach(t => {
+            const txDate = new Date(t.processedAt);
+            const key = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+            const monthObj = months.find(m => m.key === key);
+            if (monthObj) {
+                const gross = t.grossAmount;
+                monthObj.total += gross;
+                monthObj.apps[t.appId] = (monthObj.apps[t.appId] || 0) + gross;
+            }
+        });
+
+        return months;
+    }, [filteredTransactions]);
+
+    // Plot values for SVG chart drawing
+    const svgChartConfig = useMemo(() => {
+        const width = 800;
+        const height = 240;
+        const padding = 35;
+
+        const maxVal = Math.max(...chartData.map(d => d.total), 100);
+
+        const getX = (index: number) => padding + (index * (width - 2 * padding)) / (chartData.length - 1);
+        const getY = (val: number) => height - padding - (val * (height - 2 * padding)) / maxVal;
+
+        const gridLines = [0, 0.25, 0.5, 0.75, 1].map(pct => {
+            const val = pct * maxVal;
+            const y = getY(val);
+            return { y, val: Math.round(val) };
+        });
+
+        const overallPath = chartData.map((d, i) => `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(d.total)}`).join(' ');
+
+        // Individual lines for specific apps (shown when "all" is selected)
+        const colors = [
+            'stroke-amber-500', 
+            'stroke-emerald-500', 
+            'stroke-blue-500', 
+            'stroke-pink-500', 
+            'stroke-purple-500'
+        ];
+        const appPaths = apps.map((app, idx) => {
+            const colorClass = colors[idx % colors.length];
+            const path = chartData.map((d, i) => {
+                const val = d.apps[app.id] || 0;
+                return `${i === 0 ? 'M' : 'L'} ${getX(i)} ${getY(val)}`;
+            }).join(' ');
+
+            return {
+                id: app.id,
+                name: app.appName,
+                colorClass,
+                path
+            };
+        });
 
         return {
-            gross: parseFloat(gross.toFixed(2)),
-            net: parseFloat(net.toFixed(2)),
-            tax: parseFloat(tax.toFixed(2)),
-            totalCustomers: totalCust,
-            activeCustomers: activeCust,
-            churnRate,
+            width,
+            height,
+            padding,
+            getX,
+            getY,
+            gridLines,
+            overallPath,
+            appPaths
         };
-    }, [filteredTransactions, filteredCustomers]);
+    }, [chartData, apps]);
 
     // 3. Dynamic Cohort Matrices calculation
     const cohortRows = useMemo(() => {
@@ -188,7 +302,30 @@ export default function DashboardClient({
         document.body.removeChild(link);
     };
 
-    // Helper to get styling class for cohort cells based on retention percentage
+    // 6. Settings Saving Handler
+    const handleSaveSettings = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setSaveStatus('saving');
+        setErrorMessage('');
+
+        const res = await updateUserSettings({
+            notionApiKey,
+            notionDatabaseId,
+            leaderboardOptIn,
+            leaderboardName,
+            retentionMonths
+        });
+
+        if (res.success) {
+            setSaveStatus('success');
+            setTimeout(() => setSaveStatus('idle'), 3000);
+        } else {
+            setSaveStatus('error');
+            setErrorMessage(res.error || 'Failed to update settings');
+        }
+    };
+
+    // Helper to get styling class for cohort cells
     const getCellColorClass = (val: number | undefined) => {
         if (val === undefined) return 'bg-[#12131C] text-gray-700';
         if (val >= 80) return 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/10';
@@ -196,6 +333,16 @@ export default function DashboardClient({
         if (val >= 25) return 'bg-amber-500/10 text-amber-400 border border-amber-500/5';
         return 'bg-rose-500/10 text-rose-400 border border-rose-500/5';
     };
+
+    // Sorted Leaderboard Entries based on Selected Period (Monthly vs Yearly)
+    const sortedLeaderboard = useMemo(() => {
+        return [...leaderboard].sort((a, b) => {
+            if (leaderboardPeriod === 'monthly') {
+                return b.monthlyEarnings - a.monthlyEarnings;
+            }
+            return b.yearlyEarnings - a.yearlyEarnings;
+        });
+    }, [leaderboard, leaderboardPeriod]);
 
     return (
         <div className="min-h-screen bg-[#07080C] text-white flex flex-col font-sans">
@@ -286,6 +433,26 @@ export default function DashboardClient({
                     >
                         🔌 Mini-App Code Generator
                     </button>
+                    <button
+                        onClick={() => setActiveTab('leaderboard')}
+                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
+                            activeTab === 'leaderboard' 
+                                ? 'border-amber-500 text-amber-400' 
+                                : 'border-transparent text-gray-500 hover:text-gray-300'
+                        }`}
+                    >
+                        🏆 Community Leaderboard
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('settings')}
+                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
+                            activeTab === 'settings' 
+                                ? 'border-amber-500 text-amber-400' 
+                                : 'border-transparent text-gray-500 hover:text-gray-300'
+                        }`}
+                    >
+                        ⚙️ Settings & CRM
+                    </button>
                 </div>
 
                 {/* TAB 1: OVERVIEW */}
@@ -319,6 +486,107 @@ export default function DashboardClient({
                                 <span className="text-xs text-gray-500 uppercase tracking-wider">Churn Rate</span>
                                 <div className="text-2xl font-bold text-rose-400">{metrics.churnRate}%</div>
                                 <span className="text-[10px] text-gray-500">Cancelled / Total customers</span>
+                            </div>
+                        </div>
+
+                        {/* Interactive SVG Line Chart */}
+                        <div className="p-6 rounded-xl bg-[#0A0B10]/80 border border-white/[0.04] space-y-4">
+                            <div className="flex justify-between items-center">
+                                <div>
+                                    <h3 className="text-sm font-semibold tracking-wider text-gray-400 uppercase">12-Month Revenue Growth</h3>
+                                    <p className="text-xs text-gray-500">Gross revenue trend calculated for active applications</p>
+                                </div>
+                                {selectedAppId === 'all' && (
+                                    <div className="flex items-center gap-3 text-[10px] flex-wrap">
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="w-2.5 h-2.5 rounded-full bg-white border border-white/20" />
+                                            <span className="text-gray-400">Total Combined</span>
+                                        </div>
+                                        {apps.slice(0, 3).map((app, idx) => {
+                                            const bgColors = ['bg-amber-500', 'bg-emerald-500', 'bg-blue-500'];
+                                            return (
+                                                <div key={app.id} className="flex items-center gap-1.5">
+                                                    <span className={`w-2.5 h-2.5 rounded-full ${bgColors[idx % bgColors.length]}`} />
+                                                    <span className="text-gray-400">{app.appName}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="relative w-full overflow-hidden">
+                                <svg 
+                                    viewBox={`0 0 ${svgChartConfig.width} ${svgChartConfig.height}`} 
+                                    className="w-full h-56 font-mono text-[9px] fill-gray-500"
+                                >
+                                    {/* Horizontal gridlines and Y values */}
+                                    {svgChartConfig.gridLines.map((line, idx) => (
+                                        <g key={idx}>
+                                            <line 
+                                                x1={svgChartConfig.padding} 
+                                                y1={line.y} 
+                                                x2={svgChartConfig.width - svgChartConfig.padding} 
+                                                y2={line.y} 
+                                                className="stroke-white/[0.03]" 
+                                                strokeWidth="1" 
+                                            />
+                                            <text 
+                                                x={svgChartConfig.padding - 8} 
+                                                y={line.y + 3} 
+                                                textAnchor="end"
+                                            >
+                                                ${line.val}
+                                            </text>
+                                        </g>
+                                    ))}
+
+                                    {/* X-axis Month Labels */}
+                                    {chartData.map((d, i) => (
+                                        <text 
+                                            key={i} 
+                                            x={svgChartConfig.getX(i)} 
+                                            y={svgChartConfig.height - 10} 
+                                            textAnchor="middle"
+                                        >
+                                            {d.label}
+                                        </text>
+                                    ))}
+
+                                    {/* App lines (if all Apps is selected) */}
+                                    {selectedAppId === 'all' && svgChartConfig.appPaths.map((app) => (
+                                        <path 
+                                            key={app.id}
+                                            d={app.path} 
+                                            fill="none" 
+                                            className={`${app.colorClass} opacity-60`} 
+                                            strokeWidth="2" 
+                                            strokeDasharray="4 2"
+                                        />
+                                    ))}
+
+                                    {/* Primary Gross Line */}
+                                    <path 
+                                        d={svgChartConfig.overallPath} 
+                                        fill="none" 
+                                        className="stroke-white" 
+                                        strokeWidth="3.5" 
+                                        strokeLinecap="round" 
+                                        strokeLinejoin="round" 
+                                    />
+
+                                    {/* Interactive dots representing values */}
+                                    {chartData.map((d, i) => (
+                                        <circle 
+                                            key={i}
+                                            cx={svgChartConfig.getX(i)}
+                                            cy={svgChartConfig.getY(d.total)}
+                                            r="4.5"
+                                            className="fill-[#07080C] stroke-amber-500"
+                                            strokeWidth="2.5"
+                                        />
+                                    ))}
+                                </svg>
                             </div>
                         </div>
 
@@ -676,6 +944,220 @@ export async function syncAppUser({
                                 </div>
                             </div>
                         </div>
+                    </div>
+                )}
+
+                {/* TAB 5: PUBLIC COMMUNITY LEADERBOARD */}
+                {activeTab === 'leaderboard' && (
+                    <div className="p-6 rounded-xl bg-[#0A0B10] border border-white/[0.04] space-y-6">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                            <div>
+                                <h3 className="text-lg font-bold">🏆 Public Community Leaderboard</h3>
+                                <p className="text-xs text-gray-500">
+                                    Top earning applications in the Whop Hub ecosystem. Configure your visibility under Settings.
+                                </p>
+                            </div>
+                            <div className="flex rounded-lg bg-[#14151F] border border-white/5 p-1 text-xs">
+                                <button
+                                    onClick={() => setLeaderboardPeriod('monthly')}
+                                    className={`px-4 py-1.5 rounded-md font-semibold transition ${
+                                        leaderboardPeriod === 'monthly' 
+                                            ? 'bg-amber-500 text-black' 
+                                            : 'text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    This Month
+                                </button>
+                                <button
+                                    onClick={() => setLeaderboardPeriod('yearly')}
+                                    className={`px-4 py-1.5 rounded-md font-semibold transition ${
+                                        leaderboardPeriod === 'yearly' 
+                                            ? 'bg-amber-500 text-black' 
+                                            : 'text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    This Year
+                                </button>
+                            </div>
+                        </div>
+
+                        {sortedLeaderboard.length === 0 ? (
+                            <div className="text-center py-12 text-gray-500 text-sm">
+                                No developers have opted into the leaderboard yet. Be the first under the Settings tab!
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto rounded-lg border border-white/[0.03]">
+                                <table className="w-full border-collapse text-left text-xs min-w-[600px]">
+                                    <thead>
+                                        <tr className="bg-[#12131A] text-gray-400 font-semibold uppercase tracking-wider border-b border-white/[0.03]">
+                                            <th className="p-4 w-16 text-center">Rank</th>
+                                            <th className="p-4">Developer Alias</th>
+                                            <th className="p-4 w-28 text-center">Apps Managed</th>
+                                            <th className="p-4 text-right">Monthly Income</th>
+                                            <th className="p-4 text-right">Yearly Income</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/[0.02] text-gray-300">
+                                        {sortedLeaderboard.map((item, idx) => {
+                                            const rankColors = ['text-amber-400 font-bold', 'text-gray-300 font-bold', 'text-amber-600 font-bold'];
+                                            const rankBadges = ['🥇', '🥈', '🥉'];
+                                            const isTop3 = idx < 3;
+
+                                            return (
+                                                <tr key={idx} className="hover:bg-white/[0.01]">
+                                                    <td className="p-4 text-center font-mono font-semibold">
+                                                        {isTop3 ? (
+                                                            <span className="text-lg" title={`Rank ${idx + 1}`}>{rankBadges[idx]}</span>
+                                                        ) : (
+                                                            <span>#{idx + 1}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className={`p-4 ${isTop3 ? rankColors[idx] : 'text-white'}`}>
+                                                        {item.name}
+                                                    </td>
+                                                    <td className="p-4 text-center text-gray-400 font-semibold">
+                                                        {item.appCount}
+                                                    </td>
+                                                    <td className="p-4 text-right text-emerald-400 font-semibold">
+                                                        ${item.monthlyEarnings.toLocaleString()}
+                                                    </td>
+                                                    <td className="p-4 text-right text-amber-500 font-semibold">
+                                                        ${item.yearlyEarnings.toLocaleString()}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {/* TAB 6: SETTINGS & CRM */}
+                {activeTab === 'settings' && (
+                    <div className="p-6 rounded-xl bg-[#0A0B10] border border-white/[0.04] space-y-6">
+                        <div className="space-y-1">
+                            <h3 className="text-lg font-bold">⚙️ Developer Preferences & CRM Settings</h3>
+                            <p className="text-xs text-gray-500">
+                                Set up custom integrations, configure your leaderboard card, and adjust data storage pruning settings.
+                            </p>
+                        </div>
+
+                        <form onSubmit={handleSaveSettings} className="space-y-6 max-w-2xl">
+                            {/* Notion Keys Card */}
+                            <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">1. Private Notion CRM integration</h4>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                    Provide your personal Notion credentials. When your Whop Mini Apps send activations, they will sync to **your** database, fully isolated. Keys are encrypted with military-grade AES-256-GCM. Leaving this blank disables Notion CRM sync.
+                                </p>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-gray-400 font-semibold uppercase">Notion API Key</label>
+                                        <input
+                                            type="password"
+                                            value={notionApiKey}
+                                            onChange={(e) => setNotionApiKey(e.target.value)}
+                                            placeholder="ntn_..."
+                                            className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50 font-mono"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-[10px] text-gray-400 font-semibold uppercase">Notion Database ID</label>
+                                        <input
+                                            type="text"
+                                            value={notionDatabaseId}
+                                            onChange={(e) => setNotionDatabaseId(e.target.value)}
+                                            placeholder="e.g. 31a7e430a0a6..."
+                                            className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50 font-mono"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Leaderboard Settings */}
+                            <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">2. Leaderboard Opt-In (Gamification)</h4>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                    Enable this to compete with other developers in the Whop Central Hub network.
+                                </p>
+                                <div className="flex items-start gap-3">
+                                    <input
+                                        type="checkbox"
+                                        id="optin"
+                                        checked={leaderboardOptIn}
+                                        onChange={(e) => setLeaderboardOptIn(e.target.checked)}
+                                        className="mt-1 w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500/50 bg-[#14151F] cursor-pointer"
+                                    />
+                                    <div className="space-y-1">
+                                        <label htmlFor="optin" className="text-xs font-semibold text-gray-300 cursor-pointer select-none">
+                                            Participate in the Public Leaderboard
+                                        </label>
+                                        <p className="text-[11px] text-gray-500 leading-relaxed">
+                                            Aggregates your total monthly and yearly revenue across all connected apps.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {leaderboardOptIn && (
+                                    <div className="space-y-1 max-w-sm pt-2">
+                                        <label className="text-[10px] text-gray-400 font-semibold uppercase">Leaderboard Display Name / Alias</label>
+                                        <input
+                                            type="text"
+                                            value={leaderboardName}
+                                            onChange={(e) => setLeaderboardName(e.target.value)}
+                                            placeholder="e.g. BuilderX, ProfitAI"
+                                            className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                                        />
+                                        <p className="text-[9px] text-gray-500">Leaving this blank displays a masked version of your email (e.g. jud***@domain.com)</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Data Retention & Storage Pruning settings */}
+                            <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">
+                                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">3. Database Storage & Retention Policy</h4>
+                                <p className="text-xs text-gray-500 leading-relaxed">
+                                    Manage your PostgreSQL database footprint. Configure how long old transactions should remain stored before being automatically deleted. Recommended to prevent running out of database space.
+                                </p>
+                                <div className="space-y-2 max-w-xs">
+                                    <label className="text-[10px] text-gray-400 font-semibold uppercase">Keep Transaction Records For</label>
+                                    <select
+                                        value={retentionMonths}
+                                        onChange={(e) => setRetentionMonths(Number(e.target.value))}
+                                        className="w-full px-3 py-2.5 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none appearance-none cursor-pointer"
+                                    >
+                                        <option value={0}>♾️ Keep Forever (No Pruning)</option>
+                                        <option value={3}>🗓️ 3 Months (Auto-delete older records)</option>
+                                        <option value={6}>🗓️ 6 Months (Auto-delete older records)</option>
+                                        <option value={12}>🗓️ 12 Months (Auto-delete older records)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            {/* Form submit footer */}
+                            <div className="flex items-center gap-4">
+                                <button
+                                    type="submit"
+                                    disabled={saveStatus === 'saving'}
+                                    className="px-6 py-3 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 text-black font-bold text-xs transition duration-300 hover:from-amber-400 hover:to-amber-500 disabled:opacity-50 active:scale-[0.98]"
+                                >
+                                    {saveStatus === 'saving' ? 'Saving Changes...' : '💾 Save Settings'}
+                                </button>
+
+                                {saveStatus === 'success' && (
+                                    <span className="text-xs text-emerald-400 font-semibold animate-pulse">
+                                        ✅ Settings saved successfully!
+                                    </span>
+                                )}
+
+                                {saveStatus === 'error' && (
+                                    <span className="text-xs text-rose-400 font-semibold">
+                                        ❌ {errorMessage}
+                                    </span>
+                                )}
+                            </div>
+                        </form>
                     </div>
                 )}
             </main>
