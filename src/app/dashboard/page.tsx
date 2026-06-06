@@ -44,6 +44,25 @@ export default async function DashboardPage() {
         );
     }
 
+    // Auto-Upgrade admin to PREMIUM on dashboard load if they are currently on FREE
+    const isAdmin = user.email === 'judeolaboboye@gmail.com' || (process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL);
+    if (isAdmin && user.tier === 'FREE') {
+        user = await db.user.update({
+            where: { id: user.id },
+            data: { tier: 'PREMIUM' },
+            include: {
+                apps: {
+                    include: {
+                        customers: true,
+                        transactions: {
+                            orderBy: { processedAt: 'desc' }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
     // 3. Automated Seeder for Initial Demo/Testing Experience
     // If the database is completely empty of apps or transactions, auto-populate mock data
     const totalApps = user.apps.length;
