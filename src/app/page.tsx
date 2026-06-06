@@ -136,7 +136,7 @@ export default async function Home() {
             {/* FOOTER */}
             <footer className="border-t border-white/[0.04] bg-[#0A0B10]/40 px-6 py-6 flex flex-col sm:flex-row justify-between items-center text-xs text-gray-500 gap-4">
                 <div>
-                    © {new Date().getFullYear()} Whop Central Hub. All rights reserved.
+                    © {new Date().getFullYear()} nirvanaxjude. All rights reserved.
                 </div>
                 <div className="flex items-center gap-6">
                     <a

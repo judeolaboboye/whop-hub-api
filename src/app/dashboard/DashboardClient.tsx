@@ -70,6 +70,7 @@ export default function DashboardClient({
     settings,
     leaderboard,
 }: DashboardClientProps) {
+    const disableLeaderboard = process.env.NEXT_PUBLIC_DISABLE_LEADERBOARD === 'true';
     const [selectedAppId, setSelectedAppId] = useState<string>('all');
     const [activeTab, setActiveTab] = useState<'overview' | 'cohorts' | 'ledger' | 'generator' | 'leaderboard' | 'settings'>('overview');
     const [searchQuery, setSearchQuery] = useState('');
@@ -440,16 +441,18 @@ export default function DashboardClient({
                     >
                         🔌 Mini-App Code Generator
                     </button>
-                    <button
-                        onClick={() => setActiveTab('leaderboard')}
-                        className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
-                            activeTab === 'leaderboard' 
-                                ? 'border-amber-500 text-amber-400' 
-                                : 'border-transparent text-gray-500 hover:text-gray-300'
-                        }`}
-                    >
-                        🏆 Community Leaderboard
-                    </button>
+                    {!disableLeaderboard && (
+                        <button
+                            onClick={() => setActiveTab('leaderboard')}
+                            className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
+                                activeTab === 'leaderboard' 
+                                    ? 'border-amber-500 text-amber-400' 
+                                    : 'border-transparent text-gray-500 hover:text-gray-300'
+                            }`}
+                        >
+                            🏆 Community Leaderboard
+                        </button>
+                    )}
                     <button
                         onClick={() => setActiveTab('settings')}
                         className={`px-5 py-3 text-sm font-semibold tracking-wide border-b-2 whitespace-nowrap transition ${
@@ -955,7 +958,7 @@ export async function syncAppUser({
                 )}
 
                 {/* TAB 5: PUBLIC COMMUNITY LEADERBOARD */}
-                {activeTab === 'leaderboard' && (
+                {activeTab === 'leaderboard' && !disableLeaderboard && (
                     <div className="p-6 rounded-xl bg-[#0A0B10] border border-white/[0.04] space-y-6">
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                             <div>
@@ -1064,7 +1067,7 @@ export async function syncAppUser({
                                     <p className="text-gray-400 text-[11px]">
                                         To sync data correctly, duplicate our official template with all configured column headers: 
                                         <a 
-                                            href="https://www.notion.so/judeolaboboye/31a7e430a0a680dabd67ceea8d3caf27?v=31a7e430a0a680f6b3ea000c95904cbe&source=copy_link" 
+                                            href="https://judeolaboboye.notion.site/3777e430a0a680ab804adb53a0c6ffbd?v=3777e430a0a68023a339000c3f84d4da&source=copy_link" 
                                             target="_blank" 
                                             rel="noopener noreferrer"
                                             className="text-amber-400 underline ml-1 font-bold hover:text-amber-300 transition"
@@ -1098,43 +1101,45 @@ export async function syncAppUser({
                             </div>
 
                             {/* Leaderboard Settings */}
-                            <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">
-                                <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">2. Leaderboard Opt-In (Gamification)</h4>
-                                <p className="text-xs text-gray-500 leading-relaxed">
-                                    Enable this to compete with other developers in the Whop Central Hub network.
-                                </p>
-                                <div className="flex items-start gap-3">
-                                    <input
-                                        type="checkbox"
-                                        id="optin"
-                                        checked={leaderboardOptIn}
-                                        onChange={(e) => setLeaderboardOptIn(e.target.checked)}
-                                        className="mt-1 w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500/50 bg-[#14151F] cursor-pointer"
-                                    />
-                                    <div className="space-y-1">
-                                        <label htmlFor="optin" className="text-xs font-semibold text-gray-300 cursor-pointer select-none">
-                                            Participate in the Public Leaderboard
-                                        </label>
-                                        <p className="text-[11px] text-gray-500 leading-relaxed">
-                                            Aggregates your total monthly and yearly revenue across all connected apps.
-                                        </p>
-                                    </div>
-                                </div>
-
-                                {leaderboardOptIn && (
-                                    <div className="space-y-1 max-w-sm pt-2">
-                                        <label className="text-[10px] text-gray-400 font-semibold uppercase">Leaderboard Display Name / Alias</label>
+                            {!disableLeaderboard && (
+                                <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">
+                                    <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">2. Leaderboard Opt-In (Gamification)</h4>
+                                    <p className="text-xs text-gray-500 leading-relaxed">
+                                        Enable this to compete with other developers in the Whop Central Hub network.
+                                    </p>
+                                    <div className="flex items-start gap-3">
                                         <input
-                                            type="text"
-                                            value={leaderboardName}
-                                            onChange={(e) => setLeaderboardName(e.target.value)}
-                                            placeholder="e.g. BuilderX, ProfitAI"
-                                            className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                                            type="checkbox"
+                                            id="optin"
+                                            checked={leaderboardOptIn}
+                                            onChange={(e) => setLeaderboardOptIn(e.target.checked)}
+                                            className="mt-1 w-4 h-4 rounded border-gray-300 text-amber-500 focus:ring-amber-500/50 bg-[#14151F] cursor-pointer"
                                         />
-                                        <p className="text-[9px] text-gray-500">Leaving this blank displays a masked version of your email (e.g. jud***@domain.com)</p>
+                                        <div className="space-y-1">
+                                            <label htmlFor="optin" className="text-xs font-semibold text-gray-300 cursor-pointer select-none">
+                                                Participate in the Public Leaderboard
+                                            </label>
+                                            <p className="text-[11px] text-gray-500 leading-relaxed">
+                                                Aggregates your total monthly and yearly revenue across all connected apps.
+                                            </p>
+                                        </div>
                                     </div>
-                                )}
-                            </div>
+
+                                    {leaderboardOptIn && (
+                                        <div className="space-y-1 max-w-sm pt-2">
+                                            <label className="text-[10px] text-gray-400 font-semibold uppercase">Leaderboard Display Name / Alias</label>
+                                            <input
+                                                type="text"
+                                                value={leaderboardName}
+                                                onChange={(e) => setLeaderboardName(e.target.value)}
+                                                placeholder="e.g. BuilderX, ProfitAI"
+                                                className="w-full px-3 py-2 rounded-lg bg-[#14151f] border border-white/5 text-xs text-gray-300 focus:outline-none focus:ring-1 focus:ring-amber-500/50"
+                                            />
+                                            <p className="text-[9px] text-gray-500">Leaving this blank displays a masked version of your email (e.g. jud***@domain.com)</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Data Retention & Storage Pruning settings */}
                             <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">

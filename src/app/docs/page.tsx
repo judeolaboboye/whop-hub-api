@@ -119,7 +119,7 @@ export default function DocsPage() {
                                     <span className="font-semibold text-amber-400 block">📋 How to Duplicate &amp; Configure the Template:</span>
                                     <ol className="list-decimal pl-5 text-[11px] text-gray-300 space-y-1.5">
                                         <li>
-                                            Open our official <a href="https://www.notion.so/judeolaboboye/31a7e430a0a680dabd67ceea8d3caf27?v=31a7e430a0a680f6b3ea000c95904cbe&amp;source=copy_link" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold hover:text-amber-300">Notion CRM Database Template</a>.
+                                            Open our official <a href="https://judeolaboboye.notion.site/3777e430a0a680ab804adb53a0c6ffbd?v=3777e430a0a68023a339000c3f84d4da&amp;source=copy_link" target="_blank" rel="noopener noreferrer" className="text-amber-400 underline font-semibold hover:text-amber-300">Notion CRM Database Template</a>.
                                         </li>
                                         <li>
                                             Click the <strong>Duplicate</strong> button in the top right corner of the page to copy it to your own Notion workspace.

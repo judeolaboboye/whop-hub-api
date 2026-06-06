@@ -4,7 +4,7 @@ const notion = new Client({
     auth: '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',
 });
 
-const DATABASE_ID = '31a7e430a0a680dabd67ceea8d3caf27';
+const DATABASE_ID = '3777e430a0a680ab804adb53a0c6ffbd';
 
 async function testSync() {
     console.log('Testing Notion Database Connection...');
