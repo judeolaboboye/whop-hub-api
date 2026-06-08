@@ -94,10 +94,6 @@ To configure your Next.js Mini Apps to report back to the Central Hub, you can u
 
 ---
 
-## ⚖️ Open Source & Copyleft (GPL v3)
-This project is open-sourced under the **GNU GPL v3 License** (see [LICENSE](LICENSE)). 
+## ⚖️ License
 
-### 🛡 The Copyleft Lock and Dual-Licensing Advantage
-* **Protection against Closed-Source Replication**: The GPL v3 copyleft license mandates that anyone who forks, copies, or builds upon this code to make a commercial service must open-source their entire platform under the same GPL v3 license. This legally blocks large corporations or SaaS platforms (including Whop itself) from directly absorbing this codebase into their proprietary, closed-source systems.
-* **Dual-Licensing Leverage**: As the original copyright holder (Jude Victor Olaboboye), you are *not* bound by the GPL v3 terms. You retain the right to sell a commercial, proprietary license to Whop or other entities, providing significant bargaining leverage for acquisitions, licensing deals, or asset buyouts.
-* **Developer Community Growth**: Any improvements or bug fixes made by community members forked from this repository must remain open-source, allowing the Hub to improve collaboratively.
+This project is licensed under the **GNU GPL v3 License**. Under this license, anyone who forks, copies, or builds upon this project to distribute it must keep their codebase open-source under the same GPL v3 terms. See the [LICENSE](LICENSE) file for the full legal text.
