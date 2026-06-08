@@ -18,7 +18,7 @@
 import React from 'react';
 
 /**
- * Onboarding and setup documentation page for Whop Central Hub
+ * Onboarding and setup documentation page for Nexus Hub
  */
 export default function DocsPage() {
     return (
@@ -31,10 +31,10 @@ export default function DocsPage() {
             <header className="border-b border-white/[0.04] bg-[#0A0B10]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 flex items-center justify-center text-black font-extrabold text-lg">
-                        W
+                        N
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight">Whop Nexus Hub Documentation</h1>
+                        <h1 className="text-xl font-bold tracking-tight">Nexus Hub Documentation</h1>
                         <p className="text-[10px] text-gray-500 tracking-wide">Developer Onboarding & Setup Guide</p>
                     </div>
                 </div>
@@ -58,7 +58,7 @@ export default function DocsPage() {
                         Deploying & Syncing your Apps
                     </h2>
                     <p className="text-gray-400 text-sm sm:text-base max-w-2xl leading-relaxed">
-                        Welcome to the Whop Central Hub developer manuals. Below you will find step-by-step instructions to hook your Whop Mini Apps into the live shared hub, or set up your own self-hosted private command center.
+                        Welcome to the Nexus Hub developer manuals. Below you will find step-by-step instructions to hook your Whop Mini Apps into the live shared hub, or set up your own self-hosted private command center.
                       </p>
                 </div>                {/* VIDEO WALKTHROUGH */}
                 <div className="p-4 rounded-xl border border-white/[0.04] bg-[#0A0B10]/50 space-y-3">

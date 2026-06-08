@@ -1,43 +1,26 @@
-# Contributing to Whop Central Hub
+# Contributing to Nexus Hub
 
-Thank you for your interest in contributing to the Whop Central Hub! We welcome contributions from the developer community to help make this command center and analytics platform better for everyone.
+Thank you for your interest in Nexus Hub!
 
-By contributing to this project, you help build a highly optimized, open-source tool for Whop app developers.
+## Contribution Policy (Closed to Pull Requests)
 
----
+To maintain absolute, 100% sole copyright ownership of the codebase and ensure clear commercialization, licensing, and asset acquisition paths in the future, **this repository does not accept external code contributions, Pull Requests (PRs), or code patches.**
 
-## How to Contribute
+Any Pull Requests submitted to this repository will be closed without being merged. 
 
-### 1. Reporting Bugs & Suggesting Features
-* Search the existing Issues before opening a new one to avoid duplicates.
-* When reporting a bug, please include:
-  * Your operating system and Node/Next.js versions.
-  * Clear, step-by-step instructions to reproduce the issue.
-  * Expected vs. actual behavior.
-* For feature suggestions, describe the user need and propose a potential implementation.
+### Why this policy is in place:
+Under copyright law, any contributor to a repository owns the copyright to their contributed code. While licenses like GPL v3 permit open-source distribution, they do not grant the project owner the unilateral right to sell the codebase commercially under a proprietary license (dual-licensing) or sell the asset during an acquisition without complex legal agreements (CLAs) from every contributor. 
 
-### 2. Submitting Pull Requests (PRs)
-1. Fork the repository and create a new branch from `main`.
-2. Ensure your code follows the project's TypeScript and coding style.
-3. Write clear, descriptive commit messages.
-4. Run `npm run build` locally to verify there are no TypeScript or Next.js compilation errors.
-5. Open a Pull Request referencing the related issue.
+To ensure complete, unambiguous copyright ownership, the maintainer of this project is the **sole author** of all code.
 
 ---
 
-## Code of Conduct
+## How You Can Still Help
 
-Please maintain a collaborative, respectful, and professional environment in all communications, issue descriptions, and pull request reviews.
+Although we do not accept code submissions, we welcome developer feedback:
 
----
+1. **Bug Reports**: If you find a bug or performance issue, please open a GitHub Issue with clear reproduction steps.
+2. **Feature Requests**: If you have an idea for a new capability, endpoint, or dashboard feature, feel free to open a feature request in the Issues tab.
+3. **Discussions**: Share suggestions on optimization, developer workflows, or Notion templates in the repository discussions.
 
-## Contributor License Agreement (CLA)
-
-To ensure that the Whop Central Hub remains legally maintainable, distributable, and eligible for potential future licensing models or partnerships, we require all contributors to agree to the following terms when submitting a contribution:
-
-By submitting a Pull Request, issue contribution, or code patch to this repository, you agree that:
-1. **License Grant**: You grant Jude Victor Olaboboye a perpetual, worldwide, non-exclusive, no-charge, royalty-free, irrevocable copyright license to use, modify, prepare derivative works of, publicly display, sublicense, and distribute your contributions.
-2. **Ownership**: You retain ownership of the copyright in your contributions, but you grant the project owner the rights necessary to distribute and dual-license the project under proprietary or alternative licenses.
-3. **Original Work**: You declare that your contribution is your own original creation and that you have the legal right to submit it.
-
-If you have any questions regarding these terms, please open an issue or contact the project maintainer.
+Thank you for understanding!

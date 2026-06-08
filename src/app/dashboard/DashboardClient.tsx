@@ -401,10 +401,10 @@ export default function DashboardClient({
             <header className="border-b border-white/[0.04] bg-[#0A0B10]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 flex items-center justify-center text-black font-extrabold text-lg">
-                        W
+                        N
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight">Whop Nexus Hub</h1>
+                        <h1 className="text-xl font-bold tracking-tight">Nexus Hub</h1>
                         <p className="text-[10px] text-gray-500 tracking-wide">{userEmail}</p>
                     </div>
                 </div>
@@ -947,7 +947,7 @@ export async function syncAppUser({
 
         return await response.json();
     } catch (error) {
-        console.error('Failed syncing with Whop Central Hub:', error);
+        console.error('Failed syncing with Nexus Hub:', error);
         return { success: false, error: 'Hub synchronization failed' };
     }
 }`;
@@ -1449,7 +1449,7 @@ export async function syncAppUser({
                                 <div className="p-5 rounded-xl bg-white/[0.01] border border-white/[0.03] space-y-4">
                                     <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400">2. Leaderboard Opt-In (Gamification)</h4>
                                     <p className="text-xs text-gray-500 leading-relaxed">
-                                        Enable this to compete with other developers in the Whop Central Hub network.
+                                        Enable this to compete with other developers in the Nexus Hub network.
                                     </p>
                                     <div className="flex items-start gap-3">
                                         <input

@@ -20,7 +20,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 
 /**
- * Premium onboarding and landing homepage for the Whop Developers Hub
+ * Premium onboarding and landing homepage for the Nexus Hub (for Whop Developers)
  */
 export default async function Home() {
     const cookieStore = await cookies();
@@ -47,10 +47,10 @@ export default async function Home() {
             <header className="border-b border-white/[0.04] bg-[#0A0B10]/80 backdrop-blur-md sticky top-0 z-40 px-6 py-4 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 flex items-center justify-center text-black font-extrabold text-lg">
-                        W
+                        N
                     </div>
                     <div>
-                        <h1 className="text-xl font-bold tracking-tight">Whop Nexus Hub</h1>
+                        <h1 className="text-xl font-bold tracking-tight">Nexus Hub</h1>
                         <p className="text-[10px] text-gray-500 tracking-wide">Command Center & Analytics</p>
                     </div>
                 </div>
@@ -91,7 +91,7 @@ export default async function Home() {
             <main className="flex-1 flex flex-col items-center justify-center max-w-4xl w-full mx-auto px-6 py-16 text-center space-y-12 relative z-10">
                 <div className="space-y-4">
                     <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1b1c26] border border-white/5 text-xs text-amber-400 font-medium tracking-wide mx-auto">
-                        ✨ THE WHOP NEXUS ARCHITECTURE
+                        ✨ THE NEXUS ARCHITECTURE
                     </div>
                     <h2 className="text-4xl sm:text-6xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-white via-[#E2E8F0] to-gray-500 max-w-2xl mx-auto leading-tight">
                         Your Whop Apps, Unified in One Hub.

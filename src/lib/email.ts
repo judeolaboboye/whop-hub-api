@@ -18,7 +18,7 @@
 import nodemailer from 'nodemailer';
 
 /**
- * Global Email Sender for the Central Hub
+ * Global Email Sender for Nexus Hub
  * Uses your personal Gmail account via an App Password.
  */
 export const transporter = nodemailer.createTransport({

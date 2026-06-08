@@ -1,6 +1,6 @@
-# Whop Central Hub (Command Center) 🚀
+# Nexus Hub (Command Center) 🚀
 
-A multi-tenant, secure, and country-agnostic dashboard designed for developers running SaaS applications on the Whop App Store. The Hub consolidates user data, synchronizes records with Notion CRM, automates email welcomes via Gmail, and provides advanced analytics that are missing from the native Whop creator panel.
+A multi-tenant, secure, and country-agnostic dashboard designed for developers running SaaS applications on the Whop App Store. Nexus Hub consolidates user data, synchronizes records with Notion CRM, automates email welcomes, and provides advanced analytics that are missing from the native Whop creator panel.
 
 ---
 
@@ -97,3 +97,10 @@ To configure your Next.js Mini Apps to report back to the Central Hub, you can u
 ## ⚖️ License
 
 This project is licensed under the **GNU GPL v3 License**. Under this license, anyone who forks, copies, or builds upon this project to distribute it must keep their codebase open-source under the same GPL v3 terms. See the [LICENSE](LICENSE) file for the full legal text.
+
+---
+
+## 🛡️ Trademark Disclaimer
+
+**Disclaimer:** This project is an independent, open-source application and is not affiliated, associated, authorized, endorsed by, or in any way officially connected with Whop Inc., or any of its subsidiaries or affiliates. The official Whop website can be found at [https://whop.com](https://whop.com). The name "Whop" as well as related names, marks, emblems, and images are registered trademarks of their respective owners.
+

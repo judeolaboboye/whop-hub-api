@@ -29,7 +29,7 @@ export interface LeaderboardEntry {
 const CENTRAL_HUB_URL = process.env.NEXT_PUBLIC_CENTRAL_HUB_URL || 'https://hub-api-taupe.vercel.app';
 
 /**
- * Fetches the global, centralized community standings from the central hub.
+ * Fetches the global, centralized community standings from Nexus Hub.
  */
 export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
     try {
@@ -41,7 +41,7 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
         });
         
         if (!response.ok) {
-            throw new Error(`Failed to fetch from central hub: ${response.statusText}`);
+            throw new Error(`Failed to fetch from Nexus Hub: ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -54,7 +54,7 @@ export async function getLeaderboard(): Promise<LeaderboardEntry[]> {
             appCount: 1 // Combined metrics
         })).sort((a: any, b: any) => b.monthlyEarnings - a.monthlyEarnings);
     } catch (error) {
-        console.error('Failed to get community leaderboard from central hub:', error);
+        console.error('Failed to get community leaderboard from Nexus Hub:', error);
         
         // Fallback: Query local standings if central server is offline
         try {

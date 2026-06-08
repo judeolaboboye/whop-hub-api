@@ -20,7 +20,7 @@ import { db } from '@/lib/db';
 import { estimateTransactionFinance } from '@/lib/analytics';
 
 /**
- * Global Webhook Receiver for the Central Hub
+ * Global Webhook Receiver for Nexus Hub
  * 
  * Listens for Whop webhook lifecycle events (e.g. payment.succeeded, membership.deactivated)
  * and synchronizes them to the PostgreSQL database for cohort retention metrics and tax exports.
